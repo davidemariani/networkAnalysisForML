@@ -1,3 +1,15 @@
+#==================================================================================#
+# Author       : Davide Mariani                                                    #  
+# University   : Birkbeck College, University of London                            # 
+# Programme    : Msc Data SCience                                                  #
+# Script Name  : fake_names.py                                                     #
+# Description  : utils for non disclosure agreements precautions                   #
+# Version      : 0.1                                                               #
+#==================================================================================#
+# The aim of the script is to map the real names of buyers and sellers of the      #
+# network to fake names in order to hide their identity for the study publication. #
+#==================================================================================#
+
 import random
 import urllib.request
 import pandas as pd
