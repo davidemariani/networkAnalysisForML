@@ -1,3 +1,14 @@
+#==================================================================================#
+# Author       : Davide Mariani                                                    #  
+# University   : Birkbeck College, University of London                            # 
+# Programme    : Msc Data SCience                                                  #
+# Script Name  : visualization_utils.py                                            #
+# Description  : utils for non disclosure agreements precautions                   #
+# Version      : 0.1                                                               #
+#==================================================================================#
+# This file contains several visualization function based on bokeh (v.0.12.16)     #
+#==================================================================================#
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
