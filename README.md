@@ -1,2 +1,2 @@
 # networkAnalysisForML
-Analysis of the sellers-buyers transactions network for machine learning models improvement in the field of trade finance, credit analytics and supply chain
+Analysis of a sellers-buyers transactions network with the aim of extracting features for machine learning models. Predictions are performed using Linear Model and Random Forest for credit analytics and transactions level prediction in the field of trade finance and supply chain. This work is developed by Davide Mariani as thesis project at Birkbeck College, University of London, in collaboration with Tradeteq Ltd.
