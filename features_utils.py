@@ -69,9 +69,9 @@ def add_main_features(inst, ReportDate, impthr=0.009, imp2thr=0.04, purthr=0.009
     if prefix=='':
         inst[prefix_read+"last_payment_amount"] = xor0(inst[prefix_read+"payment_amount"].apply(lambda x: x[-1]))
     else:
-        dates_to_count = inst[prefix_read+"payment_date"].apply(lambda x:len([d for d in x if d<ReportDate])) #this retrieve the index of the last payment
-        uidlist = list(inst.index)
-        inst[prefix_read+prefix+"payment_amount"] = [inst[prefix_read+"payment_amount"][:c] for c in uidlist] 
+        #this doesn't work as it is
+        inst['dates_to_count'] = inst[prefix_read+"payment_date"].apply(lambda x:len([d for d in x if d<ReportDate])) #this retrieve the index of the last payment
+        inst[prefix_read+prefix+"payment_amount"] = inst[[prefix_read+"payment_amount", prefix_read+"dates_to_count"]].apply(lambda x:x[prefix_read+'payment_amount'][:x['dates_to_count']]) 
         inst[prefix_read+prefix+"last_payment_amount"] = xor0(inst[prefix_read+prefix+"payment_amount"].apply(lambda x: x[-1]))
 
     #sum of all the distinct entries for a single instrument
