@@ -3,7 +3,7 @@
 # University   : Birkbeck College, University of London                            # 
 # Programme    : Msc Data SCience                                                  #
 # Script Name  : visualization_utils.py                                            #
-# Description  : utils for non disclosure agreements precautions                   #
+# Description  : utils for data visualizations                                     #
 # Version      : 0.1                                                               #
 #==================================================================================#
 # This file contains several visualization function based on bokeh (v.0.12.16)     #
