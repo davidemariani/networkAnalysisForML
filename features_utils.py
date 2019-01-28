@@ -57,28 +57,34 @@ def add_main_features(inst, ReportDate, impthr=0.009, imp2thr=0.04, purthr=0.009
     inst.loc[pd.isnull(inst[prefix_read+"discharge_amount"]), prefix_read+"discharge_loss"] = 0. #...but it is 0 for NaN discharge_amount
 
     #define the presence of impairment1 as deduction_amount>0.009
-    inst[prefix_read+prefix+"has_impairment1"] =  inst[prefix_read+"deduction_amount"]>impthr
+    inst[prefix_read+prefix+"has_impairment1"] =  (inst[prefix_read+"deduction_amount"]>impthr) & (inst[prefix_read+"invoice_date"]<ReportDate)
 
     #define the presence of impairment2 as discharge_loss>0.009
-    inst[prefix_read+prefix+"has_impairment2"] =  inst[prefix_read+"discharge_loss"]>impthr
-
-    #define the presence of impairment3 as discharge_loss>proportion of invoice amount or deduction_amount>proportion of invoice amount
-    inst[prefix_read+prefix+"has_impairment3"] =  (inst[prefix_read+"discharge_loss"]>imp2thr*inst[prefix_read+"invoice_amount"]) | (inst[prefix_read+"deduction_amount"]>imp2thr*inst[prefix_read+"invoice_amount"])
-
-    #instrument which are open and more than 90 days past the due date 
-    inst[prefix_read+prefix+"is_pastdue90"] =  inst[prefix_read+"due_date"].apply(lambda x: (ReportDate - x).days > 90) & (inst[prefix_read+"document_status"]=="offen")
-
-    #instrument which are open and more than 180 days past the due date
-    inst[prefix_read+prefix+"is_pastdue180"] =  inst[prefix_read+"due_date"].apply(lambda x: (ReportDate - x).days > 180) & (inst[prefix_read+"document_status"]=="offen")
+    inst[prefix_read+prefix+"has_impairment2"] =  (inst[prefix_read+"discharge_loss"]>impthr) & (inst[prefix_read+"invoice_date"]<ReportDate)
 
     #instrument with prosecution
     inst[prefix_read+prefix+"has_prosecution"] = inst[prefix_read+"prosecution"].apply(lambda x: x=="Ja")
 
     #amount of the last payment for a certain instrument
-    inst[prefix_read+prefix+"last_payment_amount"] = xor0(inst[prefix_read+"payment_amount"].apply(lambda x: x[-1]))
+    dates_to_count = inst[prefix_read+"payment_date"].apply(lambda x:len([d for d in x if d<ReportDate])) #this retrieve the index of the last payment
+    uidlist = list(inst.index)
+    inst[prefix_read+prefix+"payment_amount"] = [inst[prefix_read+"payment_amount"][:c] for c in uidlist] 
+    inst[prefix_read+prefix+"last_payment_amount"] = xor0(inst[prefix_read+prefix+"payment_amount"].apply(lambda x: x[-1]))
 
     #sum of all the distinct entries for a single instrument
     inst[prefix_read+"total_repayment"] = xor0(inst[prefix_read+"payment_amount"].apply(lambda x: sum(list(set(x))))) #sum of distinct entries
+
+    #instrument which are open and more than 90 days past the due date 
+    if prefix=='': #base case without snapshots
+        inst[prefix_read+prefix+"is_pastdue90"] =  inst[prefix_read+"due_date"].apply(lambda x: (ReportDate - x).days > 90) & (inst[prefix_read+"document_status"]=="offen")
+    else:
+        inst[prefix_read+prefix+"is_pastdue90"] =  inst[prefix_read+"due_date"].apply(lambda x: (ReportDate - x).days > 90) & (inst[prefix_read+"total_repayment"]<inst[prefix_read+"purchase_amount"])
+
+    #instrument which are open and more than 180 days past the due date
+    if prefix=='':
+        inst[prefix_read+prefix+"is_pastdue180"] =  inst[prefix_read+"due_date"].apply(lambda x: (ReportDate - x).days > 180) & (inst[prefix_read+"document_status"]=="offen")
+    else:
+        inst[prefix_read+prefix+"is_pastdue180"] =  inst[prefix_read+"due_date"].apply(lambda x: (ReportDate - x).days > 180) & (inst[prefix_read+"total_repayment"]<inst[prefix_read+"purchase_amount"])
 
     #sum of discharge_loss and deduction_amount
     inst[prefix_read+prefix+"total_impairment"] = xor0(inst[prefix_read+"discharge_loss"]) + xor0(inst[prefix_read+"deduction_amount"])
