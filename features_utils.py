@@ -41,7 +41,7 @@ def we_share(lst):
     return res
 
 
-def add_main_features(inst, ReportDate, impthr=0.009, imp2thr=0.04, purthr=0.009, dedthr=0.009, prefix=''):
+def add_main_features(inst, ReportDate, impthr=0.009, imp2thr=0.04, purthr=0.009, dedthr=0.009, prefix='', prefix_read=''):
     """
     This function add the main features to an input instruments dataframe
     inst: instruments dataframe
@@ -53,56 +53,56 @@ def add_main_features(inst, ReportDate, impthr=0.009, imp2thr=0.04, purthr=0.009
     xor0 = np.vectorize(_xor0)
 
     #define the discharge loss as difference between invoice_amount and discharge amount...
-    inst[prefix+"discharge_loss"] = xor0(inst[prefix+"invoice_amount"] - inst[prefix+"discharge_amount"])
-    inst.loc[pd.isnull(inst[prefix+"discharge_amount"]), prefix+"discharge_loss"] = 0. #...but it is 0 for NaN discharge_amount
+    inst[prefix_read+prefix+"discharge_loss"] = xor0(inst[prefix_read+"invoice_amount"] - inst[prefix_read+"discharge_amount"])
+    inst.loc[pd.isnull(inst[prefix_read+"discharge_amount"]), prefix_read+"discharge_loss"] = 0. #...but it is 0 for NaN discharge_amount
 
     #define the presence of impairment1 as deduction_amount>0.009
-    inst[prefix+"has_impairment1"] =  inst[prefix+"deduction_amount"]>impthr
+    inst[prefix_read+prefix+"has_impairment1"] =  inst[prefix_read+"deduction_amount"]>impthr
 
     #define the presence of impairment2 as discharge_loss>0.009
-    inst[prefix+"has_impairment2"] =  inst.discharge_loss>impthr
+    inst[prefix_read+prefix+"has_impairment2"] =  inst[prefix_read+"discharge_loss"]>impthr
 
     #define the presence of impairment3 as discharge_loss>proportion of invoice amount or deduction_amount>proportion of invoice amount
-    inst[prefix+"has_impairment3"] =  (inst[prefix+"discharge_loss"]>imp2thr*inst[prefix+"invoice_amount"]) | (inst[prefix+"deduction_amount"]>imp2thr*inst[prefix+"invoice_amount"])
+    inst[prefix_read+prefix+"has_impairment3"] =  (inst[prefix_read+"discharge_loss"]>imp2thr*inst[prefix_read+"invoice_amount"]) | (inst[prefix_read+"deduction_amount"]>imp2thr*inst[prefix_read+"invoice_amount"])
 
     #instrument which are open and more than 90 days past the due date 
-    inst[prefix+"is_pastdue90"] =  inst[prefix+"due_date"].apply(lambda x: (ReportDate - x).days > 90) & (inst[prefix+"document_status"]=="offen")
+    inst[prefix_read+prefix+"is_pastdue90"] =  inst[prefix_read+"due_date"].apply(lambda x: (ReportDate - x).days > 90) & (inst[prefix_read+"document_status"]=="offen")
 
     #instrument which are open and more than 180 days past the due date
-    inst[prefix+"is_pastdue180"] =  inst[prefix+"due_date"].apply(lambda x: (ReportDate - x).days > 180) & (inst[prefix+"document_status"]=="offen")
+    inst[prefix_read+prefix+"is_pastdue180"] =  inst[prefix_read+"due_date"].apply(lambda x: (ReportDate - x).days > 180) & (inst[prefix_read+"document_status"]=="offen")
 
     #instrument with prosecution
-    inst[prefix+"has_prosecution"] = inst[prefix+"prosecution"].apply(lambda x: x=="Ja")
+    inst[prefix_read+prefix+"has_prosecution"] = inst[prefix_read+"prosecution"].apply(lambda x: x=="Ja")
 
     #amount of the last payment for a certain instrument
-    inst[prefix+"last_payment_amount"] = xor0(inst[prefix+"payment_amount"].apply(lambda x: x[-1]))
+    inst[prefix_read+prefix+"last_payment_amount"] = xor0(inst[prefix_read+"payment_amount"].apply(lambda x: x[-1]))
 
     #sum of all the distinct entries for a single instrument
-    inst[prefix+"total_repayment"] = xor0(inst[prefix+"payment_amount"].apply(lambda x: sum(list(set(x))))) #sum of distinct entries
+    inst[prefix_read+"total_repayment"] = xor0(inst[prefix_read+"payment_amount"].apply(lambda x: sum(list(set(x))))) #sum of distinct entries
 
     #sum of discharge_loss and deduction_amount
-    inst[prefix+"total_impairment"] = xor0(inst[prefix+"discharge_loss"]) + xor0(inst[prefix+"deduction_amount"])
+    inst[prefix_read+prefix+"total_impairment"] = xor0(inst[prefix_read+"discharge_loss"]) + xor0(inst[prefix_read+"deduction_amount"])
 
     #field indicating if an instrument is open or not
-    inst[prefix+"is_open"] = inst[prefix+"document_status"].apply(lambda x: x=="offen")
+    inst[prefix_read+prefix+"is_open"] = inst[prefix_read+"document_status"].apply(lambda x: x=="offen")
 
     #sort instruments dataset by invoice date and debtor id
-    inst = inst.sort_values(by=[prefix+"invoice_date", prefix+"debtor_id"], ascending=[True, True])
+    inst = inst.sort_values(by=[prefix_read+"invoice_date", prefix_read+"debtor_id"], ascending=[True, True])
 
     #weekend payment ratio
-    inst[prefix+"we_payment_share"] = inst[prefix+"payment_date"].apply(lambda x: we_share(x))
+    inst[prefix_read+prefix+"we_payment_share"] = inst[prefix_read+"payment_date"].apply(lambda x: we_share(x))
 
     #this indicates if an instrument has a purchase amount (if not, the client is not involved in repayment)
-    inst[prefix+"has_purchase"] = inst[prefix+"purchase_amount"].apply(lambda x: x>purthr)
+    inst[prefix_read+prefix+"has_purchase"] = inst[prefix_read+"purchase_amount"].apply(lambda x: x>purthr)
 
     #this indicates if an instrument has a deduction amount
-    inst[prefix+"has_deduction"] = inst[prefix+"deduction_amount"].apply(lambda x: x>dedthr)
+    inst[prefix_read+prefix+"has_deduction"] = inst[prefix_read+"deduction_amount"].apply(lambda x: x>dedthr)
 
     #this field indicates if an instrument is due
-    inst[prefix+"is_due"] = inst[prefix+"due_date"].apply(lambda x: x < ReportDate)
+    inst[prefix_read+prefix+"is_due"] = inst[prefix_read+"due_date"].apply(lambda x: x < ReportDate)
 
     #discharge amount
-    inst[prefix+"has_discharge"] = inst[prefix+"discharge_amount"]>0.001
+    inst[prefix_read+prefix+"has_discharge"] = inst[prefix_read+"discharge_amount"]>0.001
 
 
 def series_trend(s, applylog=True):
@@ -132,7 +132,7 @@ def add_node_stats(inst, igroup, idx, id, ii, prefix, decision_date_col, prefix_
     prefix_read: the prefix to read when reading a new slice
     """
     #adding counter of previously lent in this customer/debtor pair (inst is sorted by invoice date)
-    inst.loc[id, prefix_read+prefix"lent_c"] = idx 
+    inst.loc[id, prefix_read+prefix+"lent_c"] = idx 
         
     #adding counter of previously repaid instruments in this customer/debtor pair
     #to be repaid, the last payment date needs to be smaller than all the instrument date and the instrument needs to not be open
