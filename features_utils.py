@@ -12,6 +12,7 @@
 #importing main modules
 import pandas as pd
 import numpy as np
+import datetime
 from scipy import stats
 
 
@@ -28,7 +29,11 @@ def we_share(lst):
     """
     This function return the ratio of weekend payments for an instrument. nan if there's no weekend payment.
     """
+
     res = np.nan
+    if len(lst)==0:
+        return res
+
     wec = 0
     datec = 0
     for x in lst:
@@ -115,6 +120,8 @@ def add_main_features(inst, ReportDate, impthr=0.009, imp2thr=0.04, purthr=0.009
         inst['tmp_dates_to_count'] = inst["payment_date"].apply(lambda x:sum(pd.Series(x)<ReportDate)) #this retrieve the index of the last payment snapshot to snapshot (it is a temp column)
         inst[prefix+"payment_date"] = inst[["payment_date", "tmp_dates_to_count"]].apply(select_date, axis=1)
         inst[prefix+"payment_amount"] = inst[["payment_amount", "tmp_dates_to_count"]].apply(select_payment, axis=1)
+        inst[prefix+"last_payment_amount"] = xor0(inst[prefix+"payment_amount"].apply(lambda x: x[-1] if len(x)>0 else np.nan)) #last payment amount in this particular snapshot
+        inst[prefix+"last_payment_date"] = inst[prefix+"payment_date"].apply(lambda x:x[-1] if len(x)>0 else pd.NaT)
 
     #sum of all the distinct entries for a single instrument
     if prefix=='':
@@ -134,23 +141,29 @@ def add_main_features(inst, ReportDate, impthr=0.009, imp2thr=0.04, purthr=0.009
     else:
         inst[prefix+"is_pastdue180"] =  inst["due_date"].apply(lambda x: (ReportDate - x).days > 180) & (inst[prefix+"total_repayment"]<inst["purchase_amount"])
 
+    #mismatch between last payment date and due date
+    if prefix=='':
+        inst["payment_date_mismatch"] = (inst.last_payment_date - inst.due_date).dt.days
+    else:
+        inst[prefix+"payment_date_mismatch"] = (inst[prefix+"last_payment_date"] - inst.due_date).dt.days
+
     #field indicating if an instrument is open or not
     if prefix=='':
         inst[prefix+"is_open"] = (inst["document_status"].apply(lambda x: x=="offen"))
     else:
         inst[prefix+"is_open"] = (inst['invoice_date']<ReportDate) & (inst['due_date']>ReportDate)
 
-    #sort instruments dataset by invoice date and debtor id
-    inst = inst.sort_values(by=["invoice_date", "debtor_id"], ascending=[True, True])
-
     #weekend payment ratio
     if prefix=='':
-        inst[prefix+"we_payment_share"] = inst["payment_date"].apply(lambda x: we_share(x))
+        inst["we_payment_share"] = inst["payment_date"].apply(lambda x: we_share(x))
     else:
-        inst[prefix+"we_payment_share"] = inst[prefix+"payment_date"].apply(lambda x: we_share(x))
+        inst[prefix+"we_payment_share"] = inst[prefix+"payment_date"].apply(we_share)
 
     #this field indicates if an instrument is due
     inst[prefix+"is_due"] = inst["due_date"].apply(lambda x: x < ReportDate)
+
+    #sort instruments dataset by invoice date and debtor id
+    inst = inst.sort_values(by=["invoice_date", "debtor_id"], ascending=[True, True])
 
     
 
@@ -170,7 +183,7 @@ def series_trend(s, applylog=True):
     return res
 
 
-def add_node_stats(inst, igroup, idx, id, ii, prefix, decision_date_col, prefix_read=''):
+def add_node_stats(inst, igroup, idx, id, ii, decision_date_col, prefix, prefix_read=''):
     """
     This function adds stats to each node, both in the general case and the snapshots creation systems.
     inst: instruments dataframe sorted by invoice_date
@@ -188,20 +201,21 @@ def add_node_stats(inst, igroup, idx, id, ii, prefix, decision_date_col, prefix_
     #to be repaid, the last payment date needs to be smaller than all the instrument date and the instrument needs to not be open
     repaid = (igroup.loc[:, prefix_read+"last_payment_date"] < ii[decision_date_col]) & (~ igroup.loc[:, prefix_read+"is_open"]) #filter for repaid instruments in this customer/debtor pair
     inst.loc[id, prefix_read+prefix+"repaid_c"] = sum(repaid) 
-            
-    #adding counter of previously impaired in this customer/debtor pair
-    inst.loc[id, prefix_read+prefix+"impaired1_c"] = sum(igroup.loc[repaid,prefix_read+"has_impairment1"])
-    inst.loc[id, prefix_read+prefix+"impaired2_c"] = sum(igroup.loc[repaid,prefix_read+"has_impairment2"])
+    
+    if prefix_read=='':
+        #adding counter of previously impaired in this customer/debtor pair
+        inst.loc[id, prefix_read+prefix+"impaired1_c"] = sum(igroup.loc[repaid,prefix_read+"has_impairment1"])
+        inst.loc[id, prefix_read+prefix+"impaired2_c"] = sum(igroup.loc[repaid,prefix_read+"has_impairment2"])
         
     #counter of overdue in this customer/debtor pair (considering previous instruments)
     previous = igroup.index[:idx] #previous instruments selector
-    inst.loc[id, prefix_read+prefix+"pastdue90_c"] = sum((igroup.loc[previous,prefix_read+"due_date"] < ii[decision_date_col] - datetime.timedelta(90)) &
+    inst.loc[id, prefix_read+prefix+"pastdue90_c"] = sum((igroup.loc[previous,"due_date"] < ii[decision_date_col] - datetime.timedelta(90)) &
                                                         igroup.loc[previous,prefix_read+"is_pastdue90"])
-    inst.loc[id, prefix_read+prefix+"pastdue180_c"] = sum((igroup.loc[previous,prefix_read+"due_date"] < ii[decision_date_col] - datetime.timedelta(180)) & 
+    inst.loc[id, prefix_read+prefix+"pastdue180_c"] = sum((igroup.loc[previous,"due_date"] < ii[decision_date_col] - datetime.timedelta(180)) & 
                                                           igroup.loc[previous,prefix_read+"is_pastdue180"])
         
     #adding trend in amount lent in this customer/debtor pair
-    inst.loc[id, prefix_read+prefix+"trend_a"] = 0 if idx<2 else series_trend(igroup.loc[previous,prefix_read+"invoice_amount"])
+    inst.loc[id, prefix_read+prefix+"trend_a"] = 0 if idx<2 else series_trend(igroup.loc[previous,"invoice_amount"])
         
     #adding counter of weekend payments in this pair
     inst.loc[id, prefix_read+prefix+"we_payment_share"] = igroup.loc[repaid, prefix_read+"we_payment_share"].agg("mean")
