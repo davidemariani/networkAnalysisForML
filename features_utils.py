@@ -1,7 +1,7 @@
 #==================================================================================#
 # Author       : Davide Mariani                                                    #  
 # University   : Birkbeck College, University of London                            # 
-# Programme    : Msc Data SCience                                                  #
+# Programme    : Msc Data Science                                                  #
 # Script Name  : features_utils.py                                                 #
 # Description  : utils for feature engineering                                     #
 # Version      : 0.1                                                               #
@@ -59,7 +59,7 @@ def select_date(x):
     last_item = x.dates_to_count
     return dates[:last_item]
 
-def add_main_features(inst, ReportDate, impthr=0.009, imp2thr=0.04, purthr=0.009, dedthr=0.009, prefix='', prefix_read=''):
+def add_main_features(inst, ReportDate, impthr=0.009, imp2thr=0.04, purthr=0.009, dedthr=0.009, prefix=''):
     """
     This function add the main features to an input instruments dataframe
     inst: instruments dataframe
@@ -70,73 +70,84 @@ def add_main_features(inst, ReportDate, impthr=0.009, imp2thr=0.04, purthr=0.009
 
     xor0 = np.vectorize(_xor0)
 
-    #define the discharge loss as difference between invoice_amount and discharge amount...
-    inst[prefix_read+prefix+"discharge_loss"] = xor0(inst[prefix_read+"invoice_amount"] - inst[prefix_read+"discharge_amount"])
-    inst.loc[pd.isnull(inst[prefix_read+"discharge_amount"]), prefix_read+"discharge_loss"] = 0. #...but it is 0 for NaN discharge_amount
+    #-----------------------------------------------------------------
+    # Fields not affected (or not 'affectable') from snapshots systems
+    #-----------------------------------------------------------------
 
-    ####for impairments snapshot systems are not implemented yet
+    #define the discharge loss as difference between invoice_amount and discharge amount...
+    inst[prefix+"discharge_loss"] = xor0(inst["invoice_amount"] - inst["discharge_amount"])
+    inst.loc[pd.isnull(inst["discharge_amount"]), "discharge_loss"] = 0. #...but it is 0 for NaN discharge_amount
 
     #define the presence of impairment1 as deduction_amount>0.009
-    inst[prefix_read+prefix+"has_impairment1"] =  (inst[prefix_read+"deduction_amount"]>impthr) & (inst[prefix_read+"invoice_date"]<ReportDate)
+    inst[prefix+"has_impairment1"] =  (inst["deduction_amount"]>impthr) & (inst["invoice_date"]<ReportDate)
 
     #define the presence of impairment2 as discharge_loss>0.009
-    inst[prefix_read+prefix+"has_impairment2"] =  (inst[prefix_read+"discharge_loss"]>impthr) & (inst[prefix_read+"invoice_date"]<ReportDate)
+    inst[prefix+"has_impairment2"] =  (inst["discharge_loss"]>impthr) & (inst["invoice_date"]<ReportDate)
 
     #sum of discharge_loss and deduction_amount
-    inst[prefix_read+prefix+"total_impairment"] = xor0(inst[prefix_read+"discharge_loss"]) + xor0(inst[prefix_read+"deduction_amount"])
+    inst[prefix+"total_impairment"] = xor0(inst["discharge_loss"]) + xor0(inst["deduction_amount"])
 
     #instrument with prosecution
-    inst[prefix_read+prefix+"has_prosecution"] = inst[prefix_read+"prosecution"].apply(lambda x: x=="Ja")
+    inst[prefix+"has_prosecution"] = inst["prosecution"].apply(lambda x: x=="Ja")
+
+    #this indicates if an instrument has a purchase amount (if not, the client is not involved in repayment)
+    inst[prefix+"has_purchase"] = inst["purchase_amount"].apply(lambda x: x>purthr)
+
+    #this indicates if an instrument has a deduction amount
+    inst[prefix+"has_deduction"] = inst["deduction_amount"].apply(lambda x: x>dedthr)
+
+    #discharge amount
+    inst[prefix+"has_discharge"] = inst["discharge_amount"]>0.001
+
+    #-----------------------------------------------------------------
+    # Fields affected from snapshots systems
+    #-----------------------------------------------------------------
 
     #amount of the last payment for a certain instrument
     if prefix=='':
-        inst[prefix_read+"last_payment_amount"] = xor0(inst[prefix_read+"payment_amount"].apply(lambda x: x[-1]))
+        inst["last_payment_amount"] = xor0(inst["payment_amount"].apply(lambda x: x[-1]))
     else:
-        inst['dates_to_count'] = inst[prefix_read+"payment_date"].apply(lambda x:sum(pd.Series(x)<ReportDate)) #this retrieve the index of the last payment
-        inst[prefix_read+prefix+"payment_date"] = inst[[prefix_read+"payment_date", prefix_read+"dates_to_count"]].apply(select_date, axis=1)
-        inst[prefix_read+prefix+"payment_amount"] = inst[[prefix_read+"payment_amount", prefix_read+"dates_to_count"]].apply(select_payment, axis=1)
+        inst['dates_to_count'] = inst["payment_date"].apply(lambda x:sum(pd.Series(x)<ReportDate)) #this retrieve the index of the last payment
+        inst[prefix+"payment_date"] = inst[["payment_date", "dates_to_count"]].apply(select_date, axis=1)
+        inst[prefix+"payment_amount"] = inst[["payment_amount", "dates_to_count"]].apply(select_payment, axis=1)
 
     #sum of all the distinct entries for a single instrument
     if prefix=='':
-        inst[prefix_read+"total_repayment"] = xor0(inst[prefix_read+"payment_amount"].apply(lambda x: sum(list(set(x))))) #sum of distinct entries
+        inst["total_repayment"] = xor0(inst["payment_amount"].apply(lambda x: sum(list(set(x))))) #sum of distinct entries
     else:
-        inst[prefix_read+prefix+"total_repayment"] = xor0(inst[prefix_read+prefix+"payment_amount"].apply(lambda x: sum(list(set(x))))) #sum of distinct entries
+        inst[prefix+"total_repayment"] = xor0(inst[prefix+"payment_amount"].apply(lambda x: sum(list(set(x))))) #sum of distinct entries
 
     #instrument which are open and more than 90 days past the due date 
     if prefix=='': #base case without snapshots
-        inst[prefix_read+prefix+"is_pastdue90"] =  inst[prefix_read+"due_date"].apply(lambda x: (ReportDate - x).days > 90) & (inst[prefix_read+"document_status"]=="offen")
+        inst[prefix+"is_pastdue90"] =  inst["due_date"].apply(lambda x: (ReportDate - x).days > 90) & (inst["document_status"]=="offen")
     else:
-        inst[prefix_read+prefix+"is_pastdue90"] =  inst[prefix_read+"due_date"].apply(lambda x: (ReportDate - x).days > 90) & (inst[prefix_read+prefix+"total_repayment"]<inst[prefix_read+"purchase_amount"])
+        inst[prefix+"is_pastdue90"] =  inst["due_date"].apply(lambda x: (ReportDate - x).days > 90) & (inst[prefix+"total_repayment"]<inst["purchase_amount"])
 
     #instrument which are open and more than 180 days past the due date
     if prefix=='':
-        inst[prefix_read+prefix+"is_pastdue180"] =  inst[prefix_read+"due_date"].apply(lambda x: (ReportDate - x).days > 180) & (inst[prefix_read+"document_status"]=="offen")
+        inst[prefix+"is_pastdue180"] =  inst["due_date"].apply(lambda x: (ReportDate - x).days > 180) & (inst["document_status"]=="offen")
     else:
-        inst[prefix_read+prefix+"is_pastdue180"] =  inst[prefix_read+"due_date"].apply(lambda x: (ReportDate - x).days > 180) & (inst[prefix_read+prefix+"total_repayment"]<inst[prefix_read+"purchase_amount"])
+        inst[prefix+"is_pastdue180"] =  inst["due_date"].apply(lambda x: (ReportDate - x).days > 180) & (inst[prefix+"total_repayment"]<inst["purchase_amount"])
 
     #field indicating if an instrument is open or not
     if prefix=='':
-        inst[prefix_read+prefix+"is_open"] = (inst[prefix_read+"document_status"].apply(lambda x: x=="offen"))
+        inst[prefix+"is_open"] = (inst["document_status"].apply(lambda x: x=="offen"))
     else:
-        inst[prefix_read+prefix+"is_open"] = (inst['invoice_date']<ReportDate) & (inst['due_date']>ReportDate)
+        inst[prefix+"is_open"] = (inst['invoice_date']<ReportDate) & (inst['due_date']>ReportDate)
 
     #sort instruments dataset by invoice date and debtor id
-    inst = inst.sort_values(by=[prefix_read+"invoice_date", prefix_read+"debtor_id"], ascending=[True, True])
+    inst = inst.sort_values(by=["invoice_date", "debtor_id"], ascending=[True, True])
 
     #weekend payment ratio
-    inst[prefix_read+prefix+"we_payment_share"] = inst[prefix_read+"payment_date"].apply(lambda x: we_share(x))
-
-    #this indicates if an instrument has a purchase amount (if not, the client is not involved in repayment)
-    inst[prefix_read+prefix+"has_purchase"] = inst[prefix_read+"purchase_amount"].apply(lambda x: x>purthr)
-
-    #this indicates if an instrument has a deduction amount
-    inst[prefix_read+prefix+"has_deduction"] = inst[prefix_read+"deduction_amount"].apply(lambda x: x>dedthr)
+    if prefix=='':
+        inst[prefix+"we_payment_share"] = inst["payment_date"].apply(lambda x: we_share(x))
+    else:
+        inst[prefix+"we_payment_share"] = inst[prefix+"payment_date"].apply(lambda x: we_share(x))
 
     #this field indicates if an instrument is due
-    inst[prefix_read+prefix+"is_due"] = inst[prefix_read+"due_date"].apply(lambda x: x < ReportDate)
+    inst[prefix+"is_due"] = inst["due_date"].apply(lambda x: x < ReportDate)
 
-    #discharge amount
-    inst[prefix_read+prefix+"has_discharge"] = inst[prefix_read+"discharge_amount"]>0.001
+    
 
 
 def series_trend(s, applylog=True):
