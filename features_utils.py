@@ -41,6 +41,24 @@ def we_share(lst):
     return res
 
 
+def select_payment(x):
+    """
+    This function is used to select the payments in a time snapshot, where we need to exlude payments executed after the reportdate of that particular snapshot.
+    It is meant to be used inside an 'apply' with axis=1 to be rowwise.
+    """
+    payments = x.payment_amount
+    last_item = x.dates_to_count
+    return payments[:last_item]
+
+def select_date(x):
+    """
+    This function is used to select the payment dates in a time snapshot, where we need to exlude dates happening after the reportdate of that particular snapshot.
+    It is meant to be used inside an 'apply' with axis=1 to be rowwise.
+    """
+    dates = x.payment_date
+    last_item = x.dates_to_count
+    return dates[:last_item]
+
 def add_main_features(inst, ReportDate, impthr=0.009, imp2thr=0.04, purthr=0.009, dedthr=0.009, prefix='', prefix_read=''):
     """
     This function add the main features to an input instruments dataframe
@@ -56,11 +74,16 @@ def add_main_features(inst, ReportDate, impthr=0.009, imp2thr=0.04, purthr=0.009
     inst[prefix_read+prefix+"discharge_loss"] = xor0(inst[prefix_read+"invoice_amount"] - inst[prefix_read+"discharge_amount"])
     inst.loc[pd.isnull(inst[prefix_read+"discharge_amount"]), prefix_read+"discharge_loss"] = 0. #...but it is 0 for NaN discharge_amount
 
+    ####for impairments snapshot systems are not implemented yet
+
     #define the presence of impairment1 as deduction_amount>0.009
     inst[prefix_read+prefix+"has_impairment1"] =  (inst[prefix_read+"deduction_amount"]>impthr) & (inst[prefix_read+"invoice_date"]<ReportDate)
 
     #define the presence of impairment2 as discharge_loss>0.009
     inst[prefix_read+prefix+"has_impairment2"] =  (inst[prefix_read+"discharge_loss"]>impthr) & (inst[prefix_read+"invoice_date"]<ReportDate)
+
+    #sum of discharge_loss and deduction_amount
+    inst[prefix_read+prefix+"total_impairment"] = xor0(inst[prefix_read+"discharge_loss"]) + xor0(inst[prefix_read+"deduction_amount"])
 
     #instrument with prosecution
     inst[prefix_read+prefix+"has_prosecution"] = inst[prefix_read+"prosecution"].apply(lambda x: x=="Ja")
@@ -69,31 +92,33 @@ def add_main_features(inst, ReportDate, impthr=0.009, imp2thr=0.04, purthr=0.009
     if prefix=='':
         inst[prefix_read+"last_payment_amount"] = xor0(inst[prefix_read+"payment_amount"].apply(lambda x: x[-1]))
     else:
-        #this doesn't work as it is
-        inst['dates_to_count'] = inst[prefix_read+"payment_date"].apply(lambda x:len([d for d in x if d<ReportDate])) #this retrieve the index of the last payment
-        inst[prefix_read+prefix+"payment_amount"] = inst[[prefix_read+"payment_amount", prefix_read+"dates_to_count"]].apply(lambda x:x[prefix_read+'payment_amount'][:x['dates_to_count']]) 
-        inst[prefix_read+prefix+"last_payment_amount"] = xor0(inst[prefix_read+prefix+"payment_amount"].apply(lambda x: x[-1]))
+        inst['dates_to_count'] = inst[prefix_read+"payment_date"].apply(lambda x:sum(pd.Series(x)<ReportDate)) #this retrieve the index of the last payment
+        inst[prefix_read+prefix+"payment_date"] = inst[[prefix_read+"payment_date", prefix_read+"dates_to_count"]].apply(select_date, axis=1)
+        inst[prefix_read+prefix+"payment_amount"] = inst[[prefix_read+"payment_amount", prefix_read+"dates_to_count"]].apply(select_payment, axis=1)
 
     #sum of all the distinct entries for a single instrument
-    inst[prefix_read+"total_repayment"] = xor0(inst[prefix_read+"payment_amount"].apply(lambda x: sum(list(set(x))))) #sum of distinct entries
+    if prefix=='':
+        inst[prefix_read+"total_repayment"] = xor0(inst[prefix_read+"payment_amount"].apply(lambda x: sum(list(set(x))))) #sum of distinct entries
+    else:
+        inst[prefix_read+prefix+"total_repayment"] = xor0(inst[prefix_read+prefix+"payment_amount"].apply(lambda x: sum(list(set(x))))) #sum of distinct entries
 
     #instrument which are open and more than 90 days past the due date 
     if prefix=='': #base case without snapshots
         inst[prefix_read+prefix+"is_pastdue90"] =  inst[prefix_read+"due_date"].apply(lambda x: (ReportDate - x).days > 90) & (inst[prefix_read+"document_status"]=="offen")
     else:
-        inst[prefix_read+prefix+"is_pastdue90"] =  inst[prefix_read+"due_date"].apply(lambda x: (ReportDate - x).days > 90) & (inst[prefix_read+"total_repayment"]<inst[prefix_read+"purchase_amount"])
+        inst[prefix_read+prefix+"is_pastdue90"] =  inst[prefix_read+"due_date"].apply(lambda x: (ReportDate - x).days > 90) & (inst[prefix_read+prefix+"total_repayment"]<inst[prefix_read+"purchase_amount"])
 
     #instrument which are open and more than 180 days past the due date
     if prefix=='':
         inst[prefix_read+prefix+"is_pastdue180"] =  inst[prefix_read+"due_date"].apply(lambda x: (ReportDate - x).days > 180) & (inst[prefix_read+"document_status"]=="offen")
     else:
-        inst[prefix_read+prefix+"is_pastdue180"] =  inst[prefix_read+"due_date"].apply(lambda x: (ReportDate - x).days > 180) & (inst[prefix_read+"total_repayment"]<inst[prefix_read+"purchase_amount"])
-
-    #sum of discharge_loss and deduction_amount
-    inst[prefix_read+prefix+"total_impairment"] = xor0(inst[prefix_read+"discharge_loss"]) + xor0(inst[prefix_read+"deduction_amount"])
+        inst[prefix_read+prefix+"is_pastdue180"] =  inst[prefix_read+"due_date"].apply(lambda x: (ReportDate - x).days > 180) & (inst[prefix_read+prefix+"total_repayment"]<inst[prefix_read+"purchase_amount"])
 
     #field indicating if an instrument is open or not
-    inst[prefix_read+prefix+"is_open"] = inst[prefix_read+"document_status"].apply(lambda x: x=="offen")
+    if prefix=='':
+        inst[prefix_read+prefix+"is_open"] = (inst[prefix_read+"document_status"].apply(lambda x: x=="offen"))
+    else:
+        inst[prefix_read+prefix+"is_open"] = (inst['invoice_date']<ReportDate) & (inst['due_date']>ReportDate)
 
     #sort instruments dataset by invoice date and debtor id
     inst = inst.sort_values(by=[prefix_read+"invoice_date", prefix_read+"debtor_id"], ascending=[True, True])
