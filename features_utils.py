@@ -160,7 +160,7 @@ def add_main_features(inst, ReportDate, impthr=0.009, imp2thr=0.04, purthr=0.009
         inst[prefix+"we_payment_share"] = inst[prefix+"payment_date"].apply(we_share)
 
     #this field indicates if an instrument is due
-    inst[prefix+"is_due"] = inst["due_date"].apply(lambda x: x < ReportDate)
+    inst[prefix+"is_due"] = inst["due_date"].apply(lambda x: x < ReportDate) & (inst[prefix+"total_repayment"]<inst["purchase_amount"])
 
     #sort instruments dataset by invoice date and debtor id
     inst = inst.sort_values(by=["invoice_date", "debtor_id"], ascending=[True, True])
