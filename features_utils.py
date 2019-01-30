@@ -71,6 +71,8 @@ def add_main_features(inst, ReportDate, impthr=0.009, imp2thr=0.04, purthr=0.009
     impthr: threshold for impairment1
     imp2thr: threshold for impairment2
     prefix: prefix to add to new columns (and to read the correct columns from different snapshots depending on their name)
+
+    if prefix=='' it assumes that the input dataframe is the main one (not for snapshots purpose)
     """
 
     xor0 = np.vectorize(_xor0)
@@ -193,6 +195,8 @@ def add_node_stats(inst, igroup, idx, id, ii, decision_date_col, prefix, prefix_
     ii: instrument features (literally the dataset sliced in correspondence of that instrument)
     prefix: the prefix to add when creating a new df column
     prefix_read: the prefix to read when reading a new slice
+
+    if prefix_read=='' it assumes that the input dataframe is the main one (not for snapshots purpose)
     """
     #adding counter of previously lent in this customer/debtor pair (inst is sorted by invoice date)
     inst.loc[id, prefix_read+prefix+"lent_c"] = idx 
