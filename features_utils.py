@@ -52,7 +52,7 @@ def select_payment(x):
     It is meant to be used inside an 'apply' with axis=1 to be rowwise.
     """
     payments = x.payment_amount
-    last_item = x.tmp_dates_to_count
+    last_item = int(x.tmp_dates_to_count)
     return payments[:last_item]
 
 def select_date(x):
@@ -61,10 +61,10 @@ def select_date(x):
     It is meant to be used inside an 'apply' with axis=1 to be rowwise.
     """
     dates = x.payment_date
-    last_item = x.tmp_dates_to_count
+    last_item = int(x.tmp_dates_to_count)
     return dates[:last_item]
 
-def add_main_features(inst, ReportDate, impthr=0.009, imp2thr=0.04, purthr=0.009, dedthr=0.009, prefix=''):
+def add_main_features(inst, ReportDate, impthr=0.009, imp2thr=0.04, purthr=0.009, dedthr=0.009, prefix='', date_debtor_sort=False):
     """
     This function add the main features to an input instruments dataframe, both in the general case and the snapshots creation systems.
     inst: instruments dataframe
@@ -74,6 +74,8 @@ def add_main_features(inst, ReportDate, impthr=0.009, imp2thr=0.04, purthr=0.009
 
     if prefix=='' it assumes that the input dataframe is the main one (not for snapshots purpose)
     """
+
+    print('Addding main network features for snapshot with date < {}'.format(ReportDate))
 
     xor0 = np.vectorize(_xor0)
 
@@ -112,60 +114,60 @@ def add_main_features(inst, ReportDate, impthr=0.009, imp2thr=0.04, purthr=0.009
 
     #snapshot marker for selection
     if prefix!='':
-        inst[prefix]=False
-        inst.loc[inst["invoice_date"]<ReportDate, prefix]=True
+        inst[prefix]=inst["invoice_date"]<=ReportDate
 
     #amount of the last payment for a certain instrument
     if prefix=='':
         inst["last_payment_amount"] = xor0(inst["payment_amount"].apply(lambda x: x[-1]))
     else:
-        inst['tmp_dates_to_count'] = inst["payment_date"].apply(lambda x:sum(pd.Series(x)<ReportDate)) #this retrieve the index of the last payment snapshot to snapshot (it is a temp column)
-        inst[prefix+"payment_date"] = inst[["payment_date", "tmp_dates_to_count"]].apply(select_date, axis=1)
-        inst[prefix+"payment_amount"] = inst[["payment_amount", "tmp_dates_to_count"]].apply(select_payment, axis=1)
-        inst[prefix+"last_payment_amount"] = xor0(inst[prefix+"payment_amount"].apply(lambda x: x[-1] if len(x)>0 else np.nan)) #last payment amount in this particular snapshot
-        inst[prefix+"last_payment_date"] = inst[prefix+"payment_date"].apply(lambda x:x[-1] if len(x)>0 else pd.NaT)
+        inst.loc[inst[prefix],'tmp_dates_to_count'] = inst.loc[inst[prefix],"payment_date"].apply(lambda x:sum(pd.Series(x)<ReportDate)) #this retrieve the index of the last payment snapshot to snapshot (it is a temp column)
+        inst.loc[inst[prefix],prefix+"payment_date"] = inst.loc[inst[prefix],["payment_date", "tmp_dates_to_count"]].apply(select_date, axis=1)
+        inst.loc[inst[prefix],prefix+"payment_amount"] = inst.loc[inst[prefix],["payment_amount", "tmp_dates_to_count"]].apply(select_payment, axis=1)
+        inst.loc[inst[prefix],prefix+"last_payment_amount"] = xor0(inst.loc[inst[prefix],prefix+"payment_amount"].apply(lambda x: x[-1] if len(x)>0 else np.nan)) #last payment amount in this particular snapshot
+        inst.loc[inst[prefix],prefix+"last_payment_date"] = inst.loc[inst[prefix],prefix+"payment_date"].apply(lambda x:x[-1] if len(x)>0 else pd.NaT)
 
     #sum of all the distinct entries for a single instrument
     if prefix=='':
         inst["total_repayment"] = xor0(inst["payment_amount"].apply(lambda x: sum(list(set(x))))) #sum of distinct entries
     else:
-        inst[prefix+"total_repayment"] = xor0(inst[prefix+"payment_amount"].apply(lambda x: sum(list(set(x))))) #sum of distinct entries
+        inst.loc[inst[prefix],prefix+"total_repayment"] = xor0(inst.loc[inst[prefix],prefix+"payment_amount"].apply(lambda x: sum(list(set(x))))) #sum of distinct entries
 
     #instrument which are open and more than 90 days past the due date 
     if prefix=='': #base case without snapshots
         inst[prefix+"is_pastdue90"] =  inst["due_date"].apply(lambda x: (ReportDate - x).days > 90) & (inst["document_status"]=="offen")
     else:
-        inst[prefix+"is_pastdue90"] =  inst["due_date"].apply(lambda x: (ReportDate - x).days > 90) & (inst[prefix+"total_repayment"]<inst["purchase_amount"]) #in this way fully repaid transactions won't be counted among the pastdues (kind of healing)
+        inst.loc[inst[prefix],prefix+"is_pastdue90"] =  inst.loc[inst[prefix],"due_date"].apply(lambda x: (ReportDate - x).days > 90) & (inst.loc[inst[prefix],prefix+"total_repayment"]<inst.loc[inst[prefix],"purchase_amount"]) #in this way fully repaid transactions won't be counted among the pastdues (kind of healing)
 
     #instrument which are open and more than 180 days past the due date
     if prefix=='':
         inst[prefix+"is_pastdue180"] =  inst["due_date"].apply(lambda x: (ReportDate - x).days > 180) & (inst["document_status"]=="offen")
     else:
-        inst[prefix+"is_pastdue180"] =  inst["due_date"].apply(lambda x: (ReportDate - x).days > 180) & (inst[prefix+"total_repayment"]<inst["purchase_amount"])
+        inst.loc[inst[prefix],prefix+"is_pastdue180"] =  inst.loc[inst[prefix],"due_date"].apply(lambda x: (ReportDate - x).days > 180) & (inst.loc[inst[prefix],prefix+"total_repayment"]<inst.loc[inst[prefix],"purchase_amount"])
 
     #mismatch between last payment date and due date
     if prefix=='':
         inst["payment_date_mismatch"] = (inst.last_payment_date - inst.due_date).dt.days
     else:
-        inst[prefix+"payment_date_mismatch"] = (inst[prefix+"last_payment_date"] - inst.due_date).dt.days
+        inst.loc[inst[prefix],prefix+"payment_date_mismatch"] = (inst.loc[inst[prefix],prefix+"last_payment_date"] - inst.loc[inst[prefix],"due_date"]).dt.days
 
     #field indicating if an instrument is open or not
     if prefix=='':
         inst[prefix+"is_open"] = (inst["document_status"].apply(lambda x: x=="offen"))
     else:
-        inst[prefix+"is_open"] = (inst['invoice_date']<ReportDate) & (inst['due_date']>ReportDate)
+        inst.loc[inst[prefix],prefix+"is_open"] = (inst.loc[inst[prefix],'invoice_date']<ReportDate) & (inst.loc[inst[prefix],prefix+"total_repayment"]<inst.loc[inst[prefix],"purchase_amount"])
 
     #weekend payment ratio
     if prefix=='':
         inst["we_payment_share"] = inst["payment_date"].apply(lambda x: we_share(x))
     else:
-        inst[prefix+"we_payment_share"] = inst[prefix+"payment_date"].apply(we_share)
+        inst.loc[inst[prefix],prefix+"we_payment_share"] = inst.loc[inst[prefix],prefix+"payment_date"].apply(we_share)
 
     #this field indicates if an instrument is due
-    inst[prefix+"is_due"] = inst["due_date"].apply(lambda x: x < ReportDate) & (inst[prefix+"total_repayment"]<inst["purchase_amount"])
+    inst.loc[inst[prefix],prefix+"is_due"] = inst.loc[inst[prefix],"due_date"].apply(lambda x: x < ReportDate) & (inst.loc[inst[prefix],prefix+"total_repayment"]<inst.loc[inst[prefix],"purchase_amount"])
 
-    #sort instruments dataset by invoice date and debtor id
-    inst = inst.sort_values(by=["invoice_date", "debtor_id"], ascending=[True, True])
+    if date_debtor_sort:
+        #sort instruments dataset by invoice date and debtor id (time consuming - since the main df is already sorted, for snapshots this is not necessary)
+        inst = inst.sort_values(by=["invoice_date", "debtor_id"], ascending=[True, True])
 
     
 
