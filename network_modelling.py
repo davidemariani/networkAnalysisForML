@@ -16,6 +16,7 @@ import pandas as pd
 import numpy as np
 import datetime
 import re
+import networkx as nx
 
 
 
@@ -145,10 +146,75 @@ def create_edges(df, sellers_colname='customer_name_1', buyers_colname='debtor_n
     #connecting customers and debtors
     edges_couples = [(d.loc[idx,sellers_colname], d.loc[idx,buyers_colname]) for idx in d.index]
 
-    edges_df = pd.DataFrame(data = {'xs':xs, 'ys':ys, 'tuples':edges_couples}, index = xs) #edges dataframe indexed by sellers names
+    edges_df = pd.DataFrame(data = {'xs':xs, 'ys':ys, 'edges_couples':edges_couples}, index = xs) #edges dataframe indexed by sellers names
 
     if len(fields)>0:
         for f in fields: #this step assumes that the stats have been already created for the whole dataset
             edges_df[f]=list([d.loc[(d[sellers_colname] == edges_df.iloc[k]['xs']) & (d[buyers_colname] == edges_df.iloc[k]['ys']), f].values[0] for k in range(len(edges_df))])
 
     return edges_df
+
+
+
+
+def create_network(edges, nodes, nodes_size_range = (6,15)):
+    """
+    This function will create the network structure using networkx. It will also modify edges and nodes datasets adding SNA related features.
+    This is an auxiliar function of netowrk_info
+    """
+
+    edges = edges.drop_duplicates(subset = ['xs', 'ys'])
+
+    # build the nx graph
+    G=nx.Graph()
+    G.add_edges_from(edges.edges_couples)
+    nodes_list = list(G.nodes)
+
+    idxs = []
+    for i in nodes_list:
+        idxs.append(nodes[nodes['Company_Name']==i].index[0])
+
+    #sorting with same graph order
+    nodes = nodes.iloc[idxs]
+
+    #nodes analysis to define their centrality
+    centrality = nx.degree_centrality(G) #centrality dictionary
+    nodes['centrality'] = [centrality[n] for n in list(nodes['Company_Name'])]
+
+    #nodes size
+    max_size = nodes_size_range[1]
+    min_size = nodes_size_range[0]
+    nodes['size'] = np.around(np.interp(nodes['centrality'], (nodes['centrality'].min(), nodes['centrality'].max()), (min_size, max_size)),2)
+
+    return G, edges, nodes
+
+
+
+def nodes_post(nodes, edges, nodes_name_column, nodes_size_range = (6,15), nxk = 0.35, nxit = 35):
+    """
+    This function takes a nodes dataframe and add features for the over time graph visualization (size and coordinates) 
+    - it needs to be used on the most recent snapshot first, in order to assign coords to all the nodes. 
+    These coordinates will be used for the visualization of the previous timeframe after that. -
+    nodes: nodes dataframe to modify
+    edges: corresponding edges dataframe
+    nodes_name_column: name of the column of nodes df containing the name of the company
+    nodes_size_range: tuple containing minimum and maximum sizes of the nodes
+    """
+    n = nx.Graph()
+    n.add_edges_from(list(set(list(zip(list(edges['xs']),list(edges['ys']))))))
+    
+    #size
+    bc = nx.degree_centrality(n)
+    centralities =pd.Series([bc[i] for i in nodes[nodes_name_column]])
+    max_size = nodes_size_range[1]
+    min_size = nodes_size_range[0]
+    sizes = np.interp(centralities, (centralities.min(), centralities.max()), (min_size, max_size)) 
+    nodes['size'] = sizes
+    sizes_dict = dict(zip(list(nodes[nodes_name_column]), list(nodes['size'])))
+    
+    #coordinates
+    pos = nx.spring_layout(n, k=nxk, iterations=nxit)
+    coordinates = [np.array(pos[j]) for j in nodes[nodes_name_column]]
+    nodes['coords'] = coordinates
+    
+    return pos, sizes_dict
