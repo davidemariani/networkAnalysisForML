@@ -128,7 +128,7 @@ def create_nodes_df(df, sellers_colname='customer_name_1', buyers_colname='debto
     return nodes_df
 
 
-def create_edges(df, sellers_colname='customer_name_1', buyers_colname='debtor_name_1', sellersid_colname = 'customer_id', fields = []):
+def create_edges_df(df, sellers_colname='customer_name_1', buyers_colname='debtor_name_1', sellersid_colname = 'customer_id', fields = []):
     """
     This function creates a dataset of edges for network modelling
     """
