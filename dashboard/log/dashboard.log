@@ -1,0 +1,181 @@
+01/27/2019 06:04 [INFO]  Reading the input dataset...
+01/27/2019 06:04 [INFO]  Creating the graph with attributes...
+01/27/2019 06:04 [INFO]  Creating nx graph...
+01/27/2019 06:04 [INFO]  Calculating centralities...
+01/27/2019 06:04 [INFO]  Nodes df updated with the new column 'centrality'...
+01/27/2019 06:05 [INFO]  Creating network visual attributes...
+01/27/2019 06:05 [INFO]  Re-sorting graph edges...
+01/27/2019 06:07 [ERROR]  Error running application handler <bokeh.application.handlers.script.ScriptHandler object at 0x000001E4E230EF98>: Invalid value of sizing_mode: [Figure(id='1003', ...), Figure(id='1111', ...)]
+File "layouts.py", line 452, in _verify_sizing_mode:
+raise ValueError("Invalid value of sizing_mode: %s" % sizing_mode) Traceback (most recent call last):
+  File "C:\ProgramData\Anaconda3\lib\site-packages\bokeh\application\handlers\code_runner.py", line 180, in run
+    exec(self._code, module.__dict__)
+  File "C:\Users\david\Dropbox\Work\Data Science\Tradeteq\TTQ_ML_git\network_viz\dashboard\dashboard.py", line 636, in <module>
+    run_dashboard(df, edges_pkl, nodes_pkl, ReportDateOrd)
+  File "C:\Users\david\Dropbox\Work\Data Science\Tradeteq\TTQ_ML_git\network_viz\dashboard\dashboard.py", line 596, in run_dashboard
+    [plot, fig])
+  File "C:\ProgramData\Anaconda3\lib\site-packages\bokeh\layouts.py", line 296, in gridplot
+    _verify_sizing_mode(sizing_mode)
+  File "C:\ProgramData\Anaconda3\lib\site-packages\bokeh\layouts.py", line 452, in _verify_sizing_mode
+    raise ValueError("Invalid value of sizing_mode: %s" % sizing_mode)
+ValueError: Invalid value of sizing_mode: [Figure(id='1003', ...), Figure(id='1111', ...)]
+ 
+01/27/2019 06:07 [INFO]  200 GET /dashboard (::1) 152281.46ms
+01/27/2019 06:07 [INFO]  200 GET /static/css/bokeh.min.css?v=4c253f78f16b7d5d0c9d1df8062c7f4c (::1) 279.19ms
+01/27/2019 06:07 [INFO]  200 GET /static/js/bokeh-gl.min.js?v=70e18d8dcea09947c12764bf85ec76a0 (::1) 0.00ms
+01/27/2019 06:07 [INFO]  200 GET /static/css/bokeh-widgets.min.css?v=6f280acb818327130a8c244ce05fd10d (::1) 1.00ms
+01/27/2019 06:07 [INFO]  200 GET /static/css/bokeh-tables.min.css?v=86c18b0b1fd30cdbc124e60cb9452e73 (::1) 0.00ms
+01/27/2019 06:07 [INFO]  200 GET /static/js/bokeh-widgets.min.js?v=68fceb4be2f3d6410ff2d7704c8b87cf (::1) 16.26ms
+01/27/2019 06:07 [INFO]  200 GET /static/js/bokeh-tables.min.js?v=02bdadb2c698bc2855a4d4a69c163821 (::1) 16.25ms
+01/27/2019 06:07 [INFO]  200 GET /static/js/bokeh.min.js?v=b343fbb4db791eda9a229febeb303a0b (::1) 8.76ms
+01/27/2019 06:07 [INFO]  101 GET /dashboard/ws?bokeh-protocol-version=1.0&bokeh-session-id=BwEtls6dg2votir9ERSXNfFBx0LA8HLO5oDe5jdSdeWs (::1) 1.00ms
+01/27/2019 06:07 [INFO]  WebSocket connection opened
+01/27/2019 06:07 [INFO]  ServerConnection created
+01/27/2019 06:07 [WARNING]  404 GET /favicon.ico (::1) 1.00ms
+01/27/2019 07:20 [INFO]  Reading the input dataset...
+01/27/2019 07:20 [INFO]  Creating the graph with attributes...
+01/27/2019 07:21 [INFO]  Creating nx graph...
+01/27/2019 07:21 [INFO]  Calculating centralities...
+01/27/2019 07:21 [INFO]  Nodes df updated with the new column 'centrality'...
+01/27/2019 07:21 [INFO]  Creating network visual attributes...
+01/27/2019 07:21 [INFO]  Re-sorting graph edges...
+01/27/2019 07:21 [CRITICAL]  Traceback (most recent call last):
+  File "C:\Users\david\Dropbox\Work\Data Science\Tradeteq\TTQ_ML_git\network_viz\dashboard\dashboard.py", line 649, in <module>
+    run_dashboard(df, edges_pkl, nodes_pkl, ReportDateOrd)
+  File "C:\Users\david\Dropbox\Work\Data Science\Tradeteq\TTQ_ML_git\network_viz\dashboard\dashboard.py", line 222, in run_dashboard
+    if couple not in map.keys():
+TypeError: unhashable type: 'set'
+
+01/27/2019 07:24 [INFO]  Reading the input dataset...
+01/27/2019 07:24 [INFO]  Creating the graph with attributes...
+01/27/2019 07:24 [INFO]  Creating nx graph...
+01/27/2019 07:24 [INFO]  Calculating centralities...
+01/27/2019 07:24 [INFO]  Nodes df updated with the new column 'centrality'...
+01/27/2019 07:24 [INFO]  Creating network visual attributes...
+01/27/2019 07:25 [INFO]  Re-sorting graph edges...
+01/27/2019 07:25 [CRITICAL]  Traceback (most recent call last):
+  File "C:\Users\david\Dropbox\Work\Data Science\Tradeteq\TTQ_ML_git\network_viz\dashboard\dashboard.py", line 652, in <module>
+    run_dashboard(df, edges_pkl, nodes_pkl, ReportDateOrd)
+  File "C:\Users\david\Dropbox\Work\Data Science\Tradeteq\TTQ_ML_git\network_viz\dashboard\dashboard.py", line 241, in run_dashboard
+    edges = edges_.sort_values(by=['sorter'])
+  File "C:\ProgramData\Anaconda3\lib\site-packages\pandas\core\frame.py", line 4421, in sort_values
+    stacklevel=stacklevel)
+  File "C:\ProgramData\Anaconda3\lib\site-packages\pandas\core\generic.py", line 1382, in _get_label_or_level_values
+    raise KeyError(key)
+KeyError: 'sorter'
+
+01/27/2019 07:25 [INFO]  Reading the input dataset...
+01/27/2019 07:25 [INFO]  Creating the graph with attributes...
+01/27/2019 07:25 [INFO]  Creating nx graph...
+01/27/2019 07:26 [INFO]  Calculating centralities...
+01/27/2019 07:26 [INFO]  Nodes df updated with the new column 'centrality'...
+01/27/2019 07:26 [INFO]  Creating network visual attributes...
+01/27/2019 07:27 [INFO]  Re-sorting graph edges...
+01/27/2019 07:29 [INFO]  Reading the input dataset...
+01/27/2019 07:29 [INFO]  Creating the graph with attributes...
+01/27/2019 07:29 [INFO]  Creating nx graph...
+01/27/2019 07:29 [INFO]  Calculating centralities...
+01/27/2019 07:29 [INFO]  Nodes df updated with the new column 'centrality'...
+01/27/2019 07:29 [INFO]  Creating network visual attributes...
+01/27/2019 07:30 [INFO]  Re-sorting graph edges...
+01/27/2019 07:31 [INFO]  200 GET /dashboard (::1) 126249.20ms
+01/27/2019 07:31 [INFO]  200 GET /static/css/bokeh.min.css?v=1d58a7941b04bc6eeaaf40f4681e9e26 (::1) 250.34ms
+01/27/2019 07:31 [INFO]  200 GET /static/css/bokeh-widgets.min.css?v=e2198c0464ced10f820b120714112595 (::1) 2.00ms
+01/27/2019 07:31 [INFO]  200 GET /static/css/bokeh-tables.min.css?v=89abce161b192f3f74677f425212bd62 (::1) 1.00ms
+01/27/2019 07:31 [INFO]  200 GET /static/js/bokeh-gl.min.js?v=327d01527c40f0ef5d516e1e98888006 (::1) 1.99ms
+01/27/2019 07:31 [INFO]  200 GET /static/js/bokeh-widgets.min.js?v=2a2da1793cac0d5ab08757859fd42daf (::1) 10.96ms
+01/27/2019 07:31 [INFO]  200 GET /static/js/bokeh-tables.min.js?v=d0dc4c0ee523cd902d6d7a841bb8fb0a (::1) 11.97ms
+01/27/2019 07:31 [INFO]  200 GET /static/js/bokeh.min.js?v=2b4567eccf71ef8d90da8083c9007761 (::1) 21.95ms
+01/27/2019 07:31 [INFO]  101 GET /dashboard/ws?bokeh-protocol-version=1.0&bokeh-session-id=a7wdXI7ttZW8M4gowYBWj34lsNbTsFQIbu9nWoJsysV4 (::1) 1.00ms
+01/27/2019 07:31 [INFO]  WebSocket connection opened
+01/27/2019 07:31 [INFO]  ServerConnection created
+02/06/2019 11:33 [INFO]  Reading the input dataset...
+02/06/2019 11:33 [INFO]  Loading nodes and edges...
+02/06/2019 11:33 [ERROR]  Error running application handler <bokeh.application.handlers.script.ScriptHandler object at 0x0000012373522DD8>: [Errno 2] No such file or directory: 'C:/Users/david/Tradeteq Dropbox/Tradeteq Team/Clients/#GoFactoring/data analysis/instruments_with_score_simnames.pkl'
+File "common.py", line 430, in _get_handle:
+f = open(path_or_buf, mode) Traceback (most recent call last):
+  File "C:\ProgramData\Anaconda3\lib\site-packages\pandas\io\pickle.py", line 166, in try_read
+    return read_wrapper(lambda f: pkl.load(f))
+  File "C:\ProgramData\Anaconda3\lib\site-packages\pandas\io\pickle.py", line 146, in read_wrapper
+    is_text=False)
+  File "C:\ProgramData\Anaconda3\lib\site-packages\pandas\io\common.py", line 430, in _get_handle
+    f = open(path_or_buf, mode)
+FileNotFoundError: [Errno 2] No such file or directory: 'C:/Users/david/Tradeteq Dropbox/Tradeteq Team/Clients/#GoFactoring/data analysis/instruments_with_score_simnames.pkl'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\ProgramData\Anaconda3\lib\site-packages\pandas\io\pickle.py", line 173, in try_read
+    lambda f: pc.load(f, encoding=encoding, compat=False))
+  File "C:\ProgramData\Anaconda3\lib\site-packages\pandas\io\pickle.py", line 146, in read_wrapper
+    is_text=False)
+  File "C:\ProgramData\Anaconda3\lib\site-packages\pandas\io\common.py", line 430, in _get_handle
+    f = open(path_or_buf, mode)
+FileNotFoundError: [Errno 2] No such file or directory: 'C:/Users/david/Tradeteq Dropbox/Tradeteq Team/Clients/#GoFactoring/data analysis/instruments_with_score_simnames.pkl'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\ProgramData\Anaconda3\lib\site-packages\pandas\io\pickle.py", line 179, in read_pickle
+    return try_read(path)
+  File "C:\ProgramData\Anaconda3\lib\site-packages\pandas\io\pickle.py", line 177, in try_read
+    lambda f: pc.load(f, encoding=encoding, compat=True))
+  File "C:\ProgramData\Anaconda3\lib\site-packages\pandas\io\pickle.py", line 146, in read_wrapper
+    is_text=False)
+  File "C:\ProgramData\Anaconda3\lib\site-packages\pandas\io\common.py", line 430, in _get_handle
+    f = open(path_or_buf, mode)
+FileNotFoundError: [Errno 2] No such file or directory: 'C:/Users/david/Tradeteq Dropbox/Tradeteq Team/Clients/#GoFactoring/data analysis/instruments_with_score_simnames.pkl'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\ProgramData\Anaconda3\lib\site-packages\pandas\io\pickle.py", line 166, in try_read
+    return read_wrapper(lambda f: pkl.load(f))
+  File "C:\ProgramData\Anaconda3\lib\site-packages\pandas\io\pickle.py", line 146, in read_wrapper
+    is_text=False)
+  File "C:\ProgramData\Anaconda3\lib\site-packages\pandas\io\common.py", line 430, in _get_handle
+    f = open(path_or_buf, mode)
+FileNotFoundError: [Errno 2] No such file or directory: 'C:/Users/david/Tradeteq Dropbox/Tradeteq Team/Clients/#GoFactoring/data analysis/instruments_with_score_simnames.pkl'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\ProgramData\Anaconda3\lib\site-packages\pandas\io\pickle.py", line 173, in try_read
+    lambda f: pc.load(f, encoding=encoding, compat=False))
+  File "C:\ProgramData\Anaconda3\lib\site-packages\pandas\io\pickle.py", line 146, in read_wrapper
+    is_text=False)
+  File "C:\ProgramData\Anaconda3\lib\site-packages\pandas\io\common.py", line 430, in _get_handle
+    f = open(path_or_buf, mode)
+FileNotFoundError: [Errno 2] No such file or directory: 'C:/Users/david/Tradeteq Dropbox/Tradeteq Team/Clients/#GoFactoring/data analysis/instruments_with_score_simnames.pkl'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\ProgramData\Anaconda3\lib\site-packages\bokeh\application\handlers\code_runner.py", line 179, in run
+    exec(self._code, module.__dict__)
+  File "C:\Users\david\Dropbox\Work\Data Science\Tradeteq\TTQ_ML_git\network_viz\dashboard\dashboard.py", line 683, in <module>
+    df = pd.read_pickle(datafolder + loadprefix+ filename)
+  File "C:\ProgramData\Anaconda3\lib\site-packages\pandas\io\pickle.py", line 182, in read_pickle
+    return try_read(path, encoding='latin1')
+  File "C:\ProgramData\Anaconda3\lib\site-packages\pandas\io\pickle.py", line 177, in try_read
+    lambda f: pc.load(f, encoding=encoding, compat=True))
+  File "C:\ProgramData\Anaconda3\lib\site-packages\pandas\io\pickle.py", line 146, in read_wrapper
+    is_text=False)
+  File "C:\ProgramData\Anaconda3\lib\site-packages\pandas\io\common.py", line 430, in _get_handle
+    f = open(path_or_buf, mode)
+FileNotFoundError: [Errno 2] No such file or directory: 'C:/Users/david/Tradeteq Dropbox/Tradeteq Team/Clients/#GoFactoring/data analysis/instruments_with_score_simnames.pkl'
+ 
+02/06/2019 11:33 [INFO]  200 GET /dashboard (::1) 5091.05ms
+02/06/2019 11:33 [INFO]  101 GET /dashboard/ws?bokeh-protocol-version=1.0&bokeh-session-id=wgltmuiujSL29yJA2wmnhOLA0stIlMkU6t216L8GOqPG (::1) 0.00ms
+02/06/2019 11:33 [INFO]  WebSocket connection opened
+02/06/2019 11:33 [INFO]  ServerConnection created
+02/06/2019 11:33 [INFO]  WebSocket connection closed: code=1001, reason=None
+02/06/2019 11:36 [INFO]  Reading the input dataset...
+02/06/2019 11:36 [INFO]  Loading nodes and edges...
+02/06/2019 11:36 [INFO]  Creating network visual attributes...
+02/06/2019 11:38 [INFO]  200 GET /dashboard (::1) 145686.79ms
+02/06/2019 11:38 [INFO]  101 GET /dashboard/ws?bokeh-protocol-version=1.0&bokeh-session-id=BMNAna9sGZDDSXHlOZ5zlXunR4WiOx8gs60rI3HNj5FB (::1) 1.00ms
+02/06/2019 11:38 [INFO]  WebSocket connection opened
+02/06/2019 11:38 [INFO]  ServerConnection created
+02/06/2019 11:44 [INFO]  Reading the input dataset...
+02/06/2019 11:44 [INFO]  Loading nodes and edges...
