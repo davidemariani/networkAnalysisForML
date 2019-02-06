@@ -1,12 +1,14 @@
 #===================================================================================
 # Author       : Davide Mariani                                                    #
-# Company      : Tradeteq                                                          #
-# Script Name  : rpatterns_viz.py                                                #
-# Description  : Functions for repayment patterns visualization                    #
+# University   : Birkbeck College, University of London                            #
+# Programme    : Msc Data Science                                                  #
+# Script Name  : rpattern_viz.py                                                   #
+# Description  : Function for repayment patterns visualization using bokeh         #
 # Version      : 0.2                                                               #
+# Required bokeh version : 1.0.4                                                   #
 #==================================================================================#
 #==================================================================================# 
-# It has been developed using bokeh 0.12.16                                        #
+#                                                                                  #
 #==================================================================================#
 
 #base modules

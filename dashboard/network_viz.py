@@ -1,12 +1,14 @@
 #===================================================================================
 # Author       : Davide Mariani                                                    #
-# Company      : Tradeteq                                                          #
+# University   : Birkbeck College, University of London                            #
+# Programme    : Msc Data Science                                                  #
 # Script Name  : network_viz.py                                                    #
-# Description  : Functions for network visualization                               #
+# Description  : Functions for network visualization using bokeh                   #
 # Version      : 0.2                                                               #
+# Required bokeh version : 1.0.4                                                   #
 #==================================================================================#
 #==================================================================================# 
-# It has been developed using bokeh 0.12.16                                        #
+#                                                                                  #
 #==================================================================================#
 
 #base modules
