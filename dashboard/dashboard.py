@@ -1,7 +1,6 @@
-#===================================================================================
+ #===================================================================================
 # Author       : Davide Mariani                                                    #
-# University   : Birkbeck College, University of London                            #
-# Programme    : Msc Data Science                                                  #
+# Company      : Tradeteq                                                          #
 # Script Name  : dashboard.py                                                      #
 # Description  : Dashboard for network visualization and relations details         #
 # Version      : 0.2                                                               #
@@ -20,6 +19,8 @@ import math
 from matplotlib.dates import date2num, num2date
 from os import environ
 
+pd.options.mode.chained_assignment = None  # default='warn'
+
 #network analysis
 import networkx as nx
 
@@ -29,6 +30,8 @@ from bokeh.plotting import figure
 from bokeh.layouts import gridplot, widgetbox, layout
 from bokeh.models import (
     ColumnDataSource, 
+    SingleIntervalTicker,
+    ColorBar,
     CustomJS,
     Circle,
     HoverTool,
@@ -389,6 +392,9 @@ def run_dashboard(tr, graph_, edges_, nodes, reportdate, log=log, datesnum = 10,
     # Dashboard Update - Auxiliar functions
     # --------------------------------------------------------------------------------
 
+    #impairment1score highlighting embedded in viz. out of show_patterns to be used for the colorbar as well
+    color_mapper = LinearColorMapper(palette=Spectral[7], low=0.00, high=1.0) #not parametrizable with highlights apparently?
+
     def show_patterns(df_cust, to_highlight):
         """
         This function includes all the graphic updates at each selection for the repayment patterns.
@@ -400,13 +406,16 @@ def run_dashboard(tr, graph_, edges_, nodes, reportdate, log=log, datesnum = 10,
         new_y, new_right1, new_right2, new_right3, new_left1, new_left2, new_left3 = set_the_patterns(df_cust, reportdate)
 
 
+        #ATTRIBUTES OF BARS AND LINES DEPENDING ON HIGHLIGHTED PARAMETER
         
         #colors for highlight
         colors_ = [warningcol, patterns_latecol]
         colors_2 = [warningcol, patterns_maincol] #patterns_maincol]
         colors_3 = [patterns_earlycol, patterns_earlycol]
 
-        widths = [0.0, 0.25]
+        #widths and alpha for highlighting
+        widths = [0.0, 1.5] #different widths depending on highlighting system
+        alphas = [0.8, 0.0]
 
         rules = [[False]*len(df_cust), [True]*len(df_cust)]
 
@@ -419,7 +428,9 @@ def run_dashboard(tr, graph_, edges_, nodes, reportdate, log=log, datesnum = 10,
         imp_colors_2 = np.select(rules, colors_2) 
         imp_colors_3 = np.select(rules, colors_3) 
 
+        #highlighting width and alpha
         widthwarning = np.select(rules, widths) 
+        alphawarning = np.select(rules, alphas)
 
         #columndatasource (this needs to be hardcoded from case to case) - unfortunately bokeh needs this to be repeated each time since data streams change
         source.data = {'y':new_y, 'right1':new_right1, 'left1':new_left1, 'right2':new_right2, 'left2':new_left2, 
@@ -430,6 +441,7 @@ def run_dashboard(tr, graph_, edges_, nodes, reportdate, log=log, datesnum = 10,
                                      'imp_colors_2':imp_colors_2,
                                      'imp_colors_3':imp_colors_3,
                                      'widthwarning': widthwarning,
+                                     'alphawarning': alphawarning,
                              'debtor_name': df_cust['debtor_name_1'],
                                      'debtor_id':df_cust['debtors_id'],
                              'is_open': df_cust['is_open'],
@@ -462,16 +474,12 @@ def run_dashboard(tr, graph_, edges_, nodes, reportdate, log=log, datesnum = 10,
         fig.y_range.end = y_range_new[1]
 
 
-        
-
-        #impairment1score highlighting embedded in viz
-        color_mapper = LinearColorMapper(palette=Spectral[7], low=0.05, high=1.1 ) #not parametrizable with highlights apparently?
         #mainbar
         fig.hbar(y = 'y', left = 'left1', right='right1', height = .8, line_color = 'imp_colors_2', line_width='widthwarning', #width wiwth rules
-                    fill_color={'field': 'score_0', 'transform': color_mapper}, alpha=.8, line_alpha=0.65, source=source)
+                    fill_color={'field': 'score_0', 'transform': color_mapper}, alpha=.8, line_alpha='alphawarning', source=source)
         #late repayment bar
         fig.hbar(y = 'y', left = 'left2', right='right2', height = .8, 
-                    fill_color={'field': 'score_0', 'transform': color_mapper}, alpha=.08, line_alpha=0.65, line_width='widthwarning',
+                    fill_color={'field': 'score_0', 'transform': color_mapper}, alpha=.12, line_alpha='alphawarning', line_width='widthwarning',
                    line_color='imp_colors', source=source) #reorganize colors in the attributes
         #early repayment bar
         fig.hbar(y = 'y', left = 'left3', right='right3', height = .8, 
@@ -621,7 +629,7 @@ def run_dashboard(tr, graph_, edges_, nodes, reportdate, log=log, datesnum = 10,
         
 
     # --------------------------------------------------------------------------------
-    # Callbacks and updates calls, with curdoc from bokeh
+    # Layout, callbacks and updates calls, with curdoc from bokeh
     # --------------------------------------------------------------------------------
 
     #toggle button triggers
@@ -639,6 +647,11 @@ def run_dashboard(tr, graph_, edges_, nodes, reportdate, log=log, datesnum = 10,
                         """ )
     tapsel = TapTool(callback = callback)
     plot.add_tools(tapsel)
+
+    color_bar = ColorBar(color_mapper=color_mapper, location=(0,0), border_line_color=None, #label_standoff = 20,
+                         title='TTQ Risk Score', width=75)
+
+    fig.add_layout(color_bar, 'right')
 
     #highlight selection widget
     controls = [highlight_select]
