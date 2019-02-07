@@ -1,6 +1,7 @@
  #===================================================================================
 # Author       : Davide Mariani                                                    #
-# Company      : Tradeteq                                                          #
+# University   : Birkbeck College, University of London                            #
+# Programme    : Msc Data Science                                                  #
 # Script Name  : dashboard.py                                                      #
 # Description  : Dashboard for network visualization and relations details         #
 # Version      : 0.2                                                               #
