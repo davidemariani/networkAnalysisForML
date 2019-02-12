@@ -4,9 +4,10 @@
 # Programme    : Msc Data SCience                                                  #
 # Script Name  : visualization_utils.py                                            #
 # Description  : utils for data visualizations                                     #
-# Version      : 0.1                                                               #
+# Version      : 0.2                                                               #
 #==================================================================================#
-# This file contains several visualization function based on bokeh (v.0.12.16)     #
+# This file contains general purpose visualization functions initially based on    #
+# bokeh (v.0.12.16). Recently updated to bokeh v.1.0.4                             #
 #==================================================================================#
 
 import numpy as np
@@ -72,7 +73,7 @@ TTQcolor = {
 
 def convert_to_eur(val, curr):
     """
-    This function, given a certain numeric amount and its currency from the goFactoring dataset,
+    This function, given a certain numeric amount and its currency from the thesis dataset,
     converts it to EURO.
     """
 
@@ -150,7 +151,7 @@ def show_stats(inst, buyer, seller):
         print("    {:}: {:.1f} average instruments, {:}({:.1f}%) with some".format(
               c, seller[c].mean(), sum(seller[c] > 0), 100*sum(seller[c]>0)/Ns))
 
-#COMPARISONS DATASETS
+#DATASETS COMPARISON
 
 #base empty dataframe structure
 report = pd.DataFrame(columns=["label"]).set_index("label")
@@ -163,7 +164,7 @@ def addreprow(df, column, label, value):
 
 def save_stats(column, inst, buyer, seller, df = report):
     """
-    This function creates a dataframe of basic stats for a given gofactoring dataset
+    This function creates a dataframe of basic stats for the thesis project dataset
     """
     Ni = inst.shape[0]
     addreprow(df, column,  "no of instruments", str(Ni))
@@ -617,4 +618,124 @@ def spiderWebChart(legend_names, names, vals, colors, chart_name = '',
     p.xaxis.visible = False
     p.yaxis.visible = False
     
+    return p
+
+
+
+#MODEL PERFORMANCE VIZ
+
+def plot_rocs(metrics, label=None, 
+              select_point = 0.80, 
+              p_width = 1024, 
+              p_height = 1024, 
+              title_lab = '',
+              file_output = False,
+              exportpng = False,
+              model_appendix = None,
+              dark_background = False,
+              deepFprOnly = True): 
+    """
+    This function will create a ROC curve for each metric plugged in. The argument 'metrics' needs to be a list.
+    Each metric must be in the form {'fpr': array, 'tpr': array, 'auc': array} as per 'model_analysis_viz.py' modelling.
+    """
+
+    #basic settings
+    
+    colors = [TTQcolor['azureBlue'], TTQcolor['richOrange'], TTQcolor['bloodRed'], 
+              TTQcolor['peach'], TTQcolor['richBrown'], TTQcolor['yell'], TTQcolor['darkPurple'],
+             TTQcolor['font'], TTQcolor['marketplaceOrange'], TTQcolor['blueGrey']]
+
+    p = figure(plot_width = p_width, 
+               plot_height = p_height, 
+               title = title_lab, 
+               toolbar_location='above',
+               x_axis_label = 'False Positive Rate',
+               y_axis_label = 'True Positive Rate',
+               tools = [BoxZoomTool(), ResetTool(), HoverTool()],
+               output_backend="webgl"
+               )
+    
+    dashed_line_color = 'grey'
+    fpr80_pt_color = 'black'
+    fpr80_text_color = 'black'
+    legend_background_color = 'white'
+    legend_text_color = 'black'
+
+    #darksettings
+    if dark_background:
+        p.background_fill_color = TTQcolor["PPTbg"]
+        dashed_line_color = TTQcolor['whiteGrey']
+        fpr80_pt_color = 'white'
+        fpr80_text_color = TTQcolor['whiteGrey']
+        legend_background_color = TTQcolor["PPTbg"]
+        legend_text_color = 'white'
+    
+
+    #diagonal    
+    p.line([0,1],[0,1], line_dash = [4,4], line_color = dashed_line_color, legend = "AUC = 0.5")
+
+    #colors
+    col = [colors[c] for c in range(len(metrics))]
+
+    #false positive rate 80
+    fpr80=[]
+
+    if label==None:
+        label=[' ']*len(metrics)
+    if model_appendix==None:
+        model_appendix=[' ']*len(metrics)
+
+
+    for idx, metric in enumerate(metrics):
+        #roc curves
+        p.line(metric["fpr"], metric["tpr"], line_color = col[idx], line_width = 3, legend = label[idx]+model_appendix[idx]+' '+str(round(metric['auc'],2)))
+        fpr80.append(np.interp([select_point], metric["tpr"], metric["fpr"])[0])
+
+    #labels
+    select_point_list = []
+    for j in fpr80:
+        select_point_list.append(select_point)
+    
+    txtfpr = [str(round(num,4)) for num in fpr80]
+
+    if deepFprOnly:
+        fpr80 = [fpr80[-1]]
+        select_point_list = [select_point_list[-1]]
+        txtfpr = ['('+ str(round(select_point,2))+' , '+str(round(fpr80[0],3))+ ')']
+
+
+    label_source = ColumnDataSource(data=dict(fpr80_lab = fpr80,
+                                       select_point_lab = select_point_list,
+                                       text_lab = txtfpr))
+
+    labels = LabelSet(x = 'fpr80_lab' , 
+                      y = 'select_point_lab', 
+                      text = 'text_lab',
+                      level = 'glyph',
+                      source = label_source,
+                      text_font_size = '12pt',
+                      x_offset = -20,
+                      y_offset = -28,
+                      render_mode = 'css',
+                      text_color = fpr80_text_color)
+
+    p.add_layout(labels)
+
+    #fpr80 dots
+    p.circle(fpr80, select_point_list, size = 8, color = fpr80_pt_color)
+
+    #legend
+    p.legend.location = 'bottom_right'
+    p.legend.click_policy = 'hide'
+    p.legend.background_fill_color = legend_background_color
+    p.legend.label_text_color = legend_text_color
+    p.legend.label_text_font_size = '12pt'
+
+    #output file
+    if file_output:
+         output_file(title_lab +'.html')
+    
+    if exportpng:
+        export_png(p, filename = 'ROC.png')
+
     return p
