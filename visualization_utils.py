@@ -19,7 +19,7 @@ import math
 
 #bokeh
 from bokeh.plotting import figure
-from bokeh.models import LinearAxis, Range1d, SingleIntervalTicker, AdaptiveTicker, ColumnDataSource, LabelSet, HoverTool, Label
+from bokeh.models import LinearAxis, Range1d, SingleIntervalTicker, AdaptiveTicker, ColumnDataSource, LabelSet, HoverTool, Label, BoxZoomTool, ResetTool
 from bokeh.models.formatters import BasicTickFormatter
 from bokeh.models.glyphs import Text
 from numpy import histogram, linspace
