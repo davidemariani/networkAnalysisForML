@@ -213,10 +213,9 @@ def add_node_stats(inst, igroup, idx, id, ii, decision_date_col, prefix, prefix_
     repaid = (igroup.loc[:, prefix_read+"last_payment_date"] < ii[decision_date_col]) & (~ igroup.loc[:, prefix_read+"is_open"]) #filter for repaid instruments in this customer/debtor pair
     inst.loc[id, prefix_read+prefix+"repaid_c"] = sum(repaid) 
     
-    if prefix_read=='':
-        #adding counter of previously impaired in this customer/debtor pair
-        inst.loc[id, prefix_read+prefix+"impaired1_c"] = sum(igroup.loc[repaid,prefix_read+"has_impairment1"])
-        inst.loc[id, prefix_read+prefix+"impaired2_c"] = sum(igroup.loc[repaid,prefix_read+"has_impairment2"])
+    #adding counter of previously impaired in this customer/debtor pair
+    inst.loc[id, prefix_read+prefix+"impaired1_c"] = sum(igroup.loc[repaid,prefix_read+"has_impairment1"])
+    #inst.loc[id, prefix_read+prefix+"impaired2_c"] = sum(igroup.loc[repaid,prefix_read+"has_impairment2"])
         
     #counter of overdue in this customer/debtor pair (considering previous instruments)
     previous = igroup.index[:idx] #previous instruments selector
