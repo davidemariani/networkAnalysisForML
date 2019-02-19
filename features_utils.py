@@ -87,11 +87,8 @@ def add_main_features(inst, ReportDate, impthr=0.009, imp2thr=0.04, purthr=0.009
         inst[prefix+"discharge_loss"] = xor0(inst["invoice_amount"] - inst["discharge_amount"])
         inst.loc[pd.isnull(inst["discharge_amount"]), "discharge_loss"] = 0. #...but it is 0 for NaN discharge_amount
 
-        #define the presence of impairment1 as deduction_amount>0.009
-        inst[prefix+"has_impairment1"] =  (inst["deduction_amount"]>impthr) & (inst["invoice_date"]<ReportDate)
-
         #define the presence of impairment2 as discharge_loss>0.009
-        inst[prefix+"has_impairment2"] =  (inst["discharge_loss"]>impthr) & (inst["invoice_date"]<ReportDate)
+        #inst[prefix+"has_impairment2"] =  (inst["discharge_loss"]>impthr) & (inst["invoice_date"]<ReportDate)
 
         #sum of discharge_loss and deduction_amount
         inst[prefix+"total_impairment"] = xor0(inst["discharge_loss"]) + xor0(inst["deduction_amount"])
@@ -163,7 +160,15 @@ def add_main_features(inst, ReportDate, impthr=0.009, imp2thr=0.04, purthr=0.009
         inst.loc[inst[prefix],prefix+"we_payment_share"] = inst.loc[inst[prefix],prefix+"payment_date"].apply(we_share)
 
     #this field indicates if an instrument is due
-    inst.loc[inst[prefix],prefix+"is_due"] = inst.loc[inst[prefix],"due_date"].apply(lambda x: x < ReportDate) & (inst.loc[inst[prefix],prefix+"total_repayment"]<inst.loc[inst[prefix],"purchase_amount"])
+    inst.loc[inst[prefix],prefix+"is_due"] = inst.loc[inst[prefix],"due_date"].apply(lambda x: x < ReportDate) #& (inst.loc[inst[prefix],prefix+"total_repayment"]<inst.loc[inst[prefix],"purchase_amount"])
+
+    #impairment
+    if prefix=='':
+        #define the presence of impairment1 as deduction_amount>0.009
+        inst[prefix+"has_impairment1"] =  (inst["deduction_amount"]>impthr) & (inst["invoice_date"]<ReportDate)
+    else:
+        #the cases of snapshots from the past will be marked as impaired only if the due date is past in respect of the report date
+        inst.loc[inst[prefix], prefix+"has_impairment1"] = (inst.loc[inst[prefix],'has_impairment1']) & (inst.loc[inst[prefix], prefix+"is_due"])
 
     if date_debtor_sort:
         #sort instruments dataset by invoice date and debtor id (time consuming - since the main df is already sorted, for snapshots this is not necessary)
