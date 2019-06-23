@@ -1,80 +1,21 @@
 #===================================================================================
 # Author       : Davide Mariani                                                    #
-# University   : Birkbeck College, University of London                            #
-# Programme    : Msc Data Science                                                  #
-# Script Name  : rpattern_viz.py                                                   #
-# Description  : Function for repayment patterns visualization using bokeh         #
+# Company      : Tradeteq                                                          #
+# Script Name  : rpatterns_viz.py                                                #
+# Description  : Functions for repayment patterns visualization                    #
 # Version      : 0.2                                                               #
-# Required bokeh version : 1.0.4                                                   #
 #==================================================================================#
 #==================================================================================# 
-#                                                                                  #
+# It has been developed using bokeh 0.12.16                                        #
 #==================================================================================#
 
 #base modules
 import pandas as pd
 import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt
 import datetime
 from datetime import date,datetime
 import math
 from matplotlib.dates import date2num, num2date
-
-#bokeh
-from bokeh.io import show, output_notebook, output_file, curdoc
-from bokeh.plotting import figure
-from bokeh.layouts import gridplot, layout, widgetbox
-from bokeh.models import (
-    ColumnDataSource,
-    HoverTool,
-    Range1d,
-    Plot)
-from bokeh.models.glyphs import MultiLine
-from bokeh.models.widgets import Select, MultiSelect
-
-
-#TTQ colors dictionary
-TTQcolor = {
-    'font': '#353535',
-    'lightGrey':'#fafafa',
-    'borderColour' : '#707070',
-    'cream' : '#edece8',
-    'lightCream' : '#F8F7F7',
-    'background' : '#ffffff',
-    'link' : '#3B5A95',
-    'brightLink':'#FE4045',
-    'marketplaceOrange' : '#F6601E',
-    'warningRed' : '#ce130b',
-    'Salmon' : '#F1B096',
-    'victorian' : '#CEDFDD',
-    'cream' : '#EFEFDC',
-    'whiteGrey' : '#EDECE9',
-    'eightyGrey' : '#D1D0CF',
-    'blueGrey' : '#939EA9',
-    'sixtyGrey' : '#8E9494',
-    'navy' : '#143154',
-    'darkPurple' : '#323651',
-    'darkNavy' : '#0E2335',
-    'darkCyan' : '#0D2B2C',
-    'redBrown' : '#6B191E',
-    'richBrown': '#85372B',
-    'algae' : '#0E6930',
-    'mutedBlue' : '#496592',
-    'azureBlue' : '#155C8A',
-    'electric' : '#67BDCE',
-    'sky' : '#76B9D0',
-    'turq' : '#1A9E78',
-    'pea' : '#94CB91',
-    'ocean' : '#55B7BB',
-    'richOrange' : '#FB8C36',
-    'richPeach' : '#F66B53',
-    'yell' : '#F9EE16',
-    'yellowOrange' : '#F6BD4F',
-    'peach' : '#F2B097',
-    'bloodRed' : '#CD130B',
-    "PPTbg": '#19242F'
-  }
 
 
 def startdate(trades, idate_col='invoice_date'):
@@ -140,50 +81,61 @@ def enddate(trades, tolerance = .02):
     return enddate
 
 
+
 def set_the_patterns(tr, reportdate):
     """
     This function sets up the patterns fixing the limits of each bar before it is visualized in bokeh
     """
-    Ni = len(tr) #no of different instruments in tr
+
+    df_tmp = tr.copy()
+
+    #bar dimensions columns
+    df_tmp['right1']=0.0
+    df_tmp['left1']=0.0
+    df_tmp['right2']=0.0
+    df_tmp['left2']=0.0
+    df_tmp['right3']=0.0
+    df_tmp['left3']=0.0
+    df_tmp['ed'] = 0.0
+    df_tmp['fd'] =0.0
     
-    #empty arrays for coords
-    y=range(Ni)#vertical bar position
-    right1=np.zeros(Ni) #first bar: expected span
-    left1= np.zeros(Ni)
-    right2=np.zeros(Ni) #second bar: overdue period
-    left2= np.zeros(Ni)
-    right3=np.zeros(Ni) #third bar: paid early period
-    left3= np.zeros(Ni)
+    
+    y = range(len(df_tmp))#vertical bar position
 
+    #trade info columns
+    df_tmp.left1 = df_tmp.apply(startdate, axis=1)
+    df_tmp.right1 = df_tmp.apply(expdate, axis=1)
+    df_tmp.ed = df_tmp.apply(enddate, axis=1)
+    df_tmp.fd = df_tmp.apply(firstrepdate, axis=1)
 
-    #filling the values
-    for idx in range(len(tr)): #for each instrument, retrieve all the coordinates for the bars
-        trades = tr.iloc[idx] #selection of each instrument
-        
-        #main dates
-        left1[idx] = startdate(trades)
-        right1[idx] = expdate(trades)
-        ed = enddate(trades)
-        fd = firstrepdate(trades)
-        
-        #conditions:
-        if right1[idx] < reportdate: #is due in the past
-            if ed - right1[idx] > 0: #repaid but later than due
-                left2[idx] = right1[idx]
-                right2[idx] = ed
-            elif np.isnan(ed): #still not repaid
-                left2[idx] = right1[idx]
-                right2[idx] = reportdate
-            else: #not overdue
-                left2[idx]=right1[idx]
-                right2[idx]=left2[idx]
-        else: #not due as of reportdate
-                left2[idx]=right1[idx]
-                right2[idx]=left2[idx]
-        if fd < right1[idx]: #first repayment earlier than due
-            left3[idx] = fd
-            right3[idx] = right1[idx]
+    df_tmp['repaid']=False
+    df_tmp.repaid = df_tmp.right1<reportdate #due in the past
+
+    #not overdue
+    df_tmp.loc[df_tmp.repaid & ~(df_tmp.ed-df_tmp.right1>0) & ~(pd.isnull(df_tmp.ed)), 'left2'] = df_tmp.loc[df_tmp.repaid & ~(df_tmp.ed-df_tmp.right1>0) & ~(pd.isnull(df_tmp.ed)), 'right1']
+    df_tmp.loc[df_tmp.repaid & ~(df_tmp.ed-df_tmp.right1>0) & ~(pd.isnull(df_tmp.ed)), 'right2'] = df_tmp.loc[df_tmp.repaid & ~(df_tmp.ed-df_tmp.right1>0) & ~(pd.isnull(df_tmp.ed)), 'left2']
+
+    #repaid but later than due
+    df_tmp.loc[df_tmp.repaid & (df_tmp.ed-df_tmp.right1>0), 'left2'] = df_tmp.loc[df_tmp.repaid & (df_tmp.ed-df_tmp.right1>0), 'right1']
+    df_tmp.loc[df_tmp.repaid & (df_tmp.ed-df_tmp.right1>0), 'right2'] = df_tmp.loc[df_tmp.repaid & (df_tmp.ed-df_tmp.right1>0), 'ed']
+
+    #still not repaid
+    df_tmp.loc[df_tmp.repaid & (pd.isnull(df_tmp.ed)), 'left2']=df_tmp.loc[df_tmp.repaid & (pd.isnull(df_tmp.ed)), 'right1']
+    df_tmp.loc[df_tmp.repaid & (pd.isnull(df_tmp.ed)), 'right2']=reportdate
+
+    #not due as of reportdate
+    df_tmp.loc[~df_tmp.repaid, ['left2', 'right2']] = df_tmp.loc[~df_tmp.repaid, 'right1'] 
+    
+    #early repayment
+    df_tmp.loc[df_tmp.fd<df_tmp.right1, 'left3'] = df_tmp.loc[df_tmp.fd<df_tmp.right1, 'fd']
+    df_tmp.loc[df_tmp.fd<df_tmp.right1, 'right3'] = df_tmp.loc[df_tmp.fd<df_tmp.right1, 'right1']
+
+    right1 = df_tmp.right1.tolist()
+    right2 = df_tmp.right2.tolist()
+    right3 = df_tmp.right3.tolist()
+    left1 = df_tmp.left1.tolist()
+    left2 = df_tmp.left2.tolist()
+    left3 = df_tmp.left3.tolist()
 
     return y, right1, right2, right3, left1, left2, left3
-
 

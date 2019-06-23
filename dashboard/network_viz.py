@@ -1,9 +1,8 @@
 #===================================================================================
 # Author       : Davide Mariani                                                    #
-# University   : Birkbeck College, University of London                            #
-# Programme    : Msc Data Science                                                  #
+# Company      : Tradeteq                                                          #
 # Script Name  : network_viz.py                                                    #
-# Description  : Functions for network visualization using bokeh                   #
+# Description  : Functions for network visualization                               #
 # Version      : 0.2                                                               #
 # Required bokeh version : 1.0.4                                                   #
 #==================================================================================#
@@ -14,10 +13,8 @@
 #base modules
 import pandas as pd
 import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt
 import datetime
-from datetime import date, datetime
+from datetime import date,datetime
 import math
 import os
 
@@ -41,7 +38,6 @@ from bokeh.models import (
     MultiLine)
 from bokeh.transform import factor_cmap, linear_cmap
 from bokeh.models.graphs import from_networkx, NodesAndLinkedEdges, EdgesAndLinkedNodes
-from bokeh.models.widgets import Select, MultiSelect
 
 #config
 from locale import setlocale, getlocale, LC_ALL, atof
@@ -316,8 +312,6 @@ def create_network(edges, nodes, log):
     return G, edges, nodes
 
 
-
-
 def network_info(G, edges, nodes, log, nodes_size_range = (6,15), 
                  to_highlight = 'is_pastdue90', circularLayout = False):
     """
@@ -344,7 +338,8 @@ def network_info(G, edges, nodes, log, nodes_size_range = (6,15),
 
     return G, edges, nodes
 
-def visualize_graph(graph, edges, nodes, log, title = 'Network Graph', plot_w = 900, plot_h = 900, file_output = '', nx_k=0.028, nx_iterations=25,
+
+def create_graph(graph, edges, nodes, log, title = 'Network Graph', plot_w = 900, plot_h = 900, file_output = '', nx_k=0.028, nx_iterations=25,
                       to_highlight = 'is_pastdue90', nodes_colors = [TTQcolor['sky'], TTQcolor['Salmon'], TTQcolor['marketplaceOrange']],
                       edges_colors = [TTQcolor['whiteGrey'], TTQcolor['warningRed']], circularLayout=False):
 
@@ -390,6 +385,32 @@ def visualize_graph(graph, edges, nodes, log, title = 'Network Graph', plot_w = 
 
     return graph
 
+def node_neighborhood(G, node, n, nfilter=[], n_only=False):
+    """
+    This function, given a graph G and a starting node, will find the node neighbors into a certain degree n
+    returning them as a list.
+    Giving a list of nodes as a filter as last attribute, it will select only paths containing those nodes filtering the output.
+    If n_only==True, it will select only the nodes at distance n from the starting node.
+    """
+    neigh = nx.single_source_dijkstra(G, node)
+    path_lengths = neigh[0]
+    paths = neigh[1]
+    
+    if not n_only:
+        all_neigh = [node for node, length in path_lengths.items() if length <= n]
+    else:
+        all_neigh = [node for node, length in path_lengths.items() if length == n]
+    
+    if len(nfilter)==0:
+        return all_neigh
+    else:
+        nodes = set()
+        nodes.add(node)
+        for f in nfilter:
+            for g in all_neigh:
+                if f in set(paths[g]):
+                    nodes.add(g)
+        return list(nodes)
 
 
 #CIRCULAR LAYOUT FUNCTIONS

@@ -127,13 +127,12 @@ def show_stats(inst, buyer, seller):
     """
     Ni = inst.shape[0]
     print("{:} instruments,".format(Ni))
-    fc = ['has_purchase', 'is_open', 'has_impairment1', 'has_impairment2', 'has_impairment3', "is_due",
+    fc = ['has_purchase', 'is_open', 'has_impairment1', "is_due",
            'is_pastdue90', 'is_pastdue180', 'has_prosecution', 'has_deduction']
     for c in fc:
           print("  {:}: {:} ({:2.1f}%)".format(c, sum(inst[c]), sum(100*inst[c])/Ni))
 
-    fc = ['has_impairment1',
-           'has_impairment2', 'is_pastdue90', 'is_pastdue180', 'has_prosecution',
+    fc = ['has_impairment1', 'is_pastdue90', 'is_pastdue180', 'has_prosecution',
            'is_open']
     Nb = buyer.shape[0]
     print("{:} buyers,".format(Nb))
@@ -168,7 +167,7 @@ def save_stats(column, inst, buyer, seller, df = report):
     """
     Ni = inst.shape[0]
     addreprow(df, column,  "no of instruments", str(Ni))
-    fc = ['has_purchase', 'is_open', 'has_impairment1', 'has_impairment2', 'has_impairment3', "is_due",
+    fc = ['has_purchase', 'is_open', 'has_impairment1', "is_due",
            'is_pastdue90', 'is_pastdue180', 'has_prosecution', 'has_deduction']
     for c in fc:
         if Ni!=0:
@@ -177,8 +176,7 @@ def save_stats(column, inst, buyer, seller, df = report):
             f = 0.0
         addreprow(df, column,  c, "{:} ({:2.1f}%)".format(sum(inst[c]), f))
 
-    fc = ['has_impairment1',
-           'has_impairment2', 'is_pastdue90', 'is_pastdue180', 'has_prosecution',
+    fc = ['has_impairment1', 'is_pastdue90', 'is_pastdue180', 'has_prosecution',
            'is_open']
     Nb = buyer.shape[0]
     addreprow(df, column, "no of buyers", str(Nb))
