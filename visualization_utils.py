@@ -26,6 +26,10 @@ from numpy import histogram, linspace
 from scipy.stats.kde import gaussian_kde
 from bokeh.layouts import gridplot, column
 
+#sklearn
+from sklearn.model_selection import cross_val_predict
+from sklearn.metrics import precision_recall_curve, roc_curve, roc_auc_score, confusion_matrix
+
 
 #colors library
 TTQcolor = {
@@ -622,6 +626,44 @@ def spiderWebChart(legend_names, names, vals, colors, chart_name = '',
 
 #MODEL PERFORMANCE VIZ
 
+def model_diag(model, X_train, y_train, CrossValFolds=5, run_confusion_matrix=False):
+    """
+    This function returns as output false positive rate, true positive rate and auc score in the form of a dictionary.
+    It needs model, training x and training y as inputs.
+    """
+    y_pred = cross_val_predict(model, X_train, y_train, cv=CrossValFolds)
+    
+    if hasattr(model, "decision_function"):
+        y_scores = cross_val_predict(model, X_train, y_train, cv=CrossValFolds, method="decision_function")
+    else:
+        y_proba = cross_val_predict(model, X_train, y_train, cv=CrossValFolds, method="predict_proba")
+        y_scores = y_proba[:,1]
+    fpr, tpr, thresholds = roc_curve(y_train, y_scores) #false positive rate, true positive rate and thresholds
+    auc = roc_auc_score(y_train, y_scores)
+    
+    print("AUC {:.3f}".format(auc))
+    
+    if run_confusion_matrix:
+        cm = confusion_matrix(y_train, y_pred)
+        #rescale the confusion matrix
+        rcm = np.empty([2,2])
+        rcm[0, :] = cm[0, :] / float(sum(cm[0, :]))
+        rcm[1, :] = cm[1, :] / float(sum(cm[0, :]))
+        
+        print("Confusion matrix: \n" + np.array_str(rcm, precision=5, suppress_small=True))
+    
+    return {'fpr':fpr, 'tpr':tpr, 'auc':auc}
+
+
+def model_oostest(model, X_test, y_test):
+    """
+    This function tests the model performance on out of sample data
+    """
+    y_score = model.predict_proba(X_test)[:,1]
+    m_auc = roc_auc_score(y_test, y_score)
+    return m_auc
+
+
 def plot_rocs(metrics, label=None, 
               select_point = 0.80, 
               p_width = 1024, 
@@ -631,17 +673,14 @@ def plot_rocs(metrics, label=None,
               exportpng = False,
               model_appendix = None,
               dark_background = False,
-              deepFprOnly = True): 
+              deepFprOnly = True,
+              colors = [TTQcolor['azureBlue'], TTQcolor['richOrange']]): 
     """
     This function will create a ROC curve for each metric plugged in. The argument 'metrics' needs to be a list.
     Each metric must be in the form {'fpr': array, 'tpr': array, 'auc': array} as per 'model_analysis_viz.py' modelling.
     """
 
     #basic settings
-    
-    colors = [TTQcolor['azureBlue'], TTQcolor['richOrange'], TTQcolor['bloodRed'], 
-              TTQcolor['peach'], TTQcolor['richBrown'], TTQcolor['yell'], TTQcolor['darkPurple'],
-             TTQcolor['font'], TTQcolor['marketplaceOrange'], TTQcolor['blueGrey']]
 
     p = figure(plot_width = p_width, 
                plot_height = p_height, 
