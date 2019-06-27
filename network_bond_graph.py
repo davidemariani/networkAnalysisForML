@@ -24,7 +24,7 @@ pd.options.mode.chained_assignment = None  # default='warn'
 import networkx as nx
 
 
-def build_bgtfeat_imp(dfi, g, edge_flow='imp_edge_flow', edge_eff='imp_edge_eff', node_flow='imp_node_flow', energy='imp_energy',
+def build_bgtfeat(dfi, g, edge_flow='imp_edge_flow', edge_eff='imp_edge_eff', node_flow='imp_node_flow', energy='imp_energy',
                       c_node_eff='imp_c_node_eff', d_node_flow='imp_d_node_flow'):
     """
     This function takes a pandas datafram of instruments dfi and a graph g in order to calculate effort, flow and energy at each edge and node,
@@ -36,7 +36,7 @@ def build_bgtfeat_imp(dfi, g, edge_flow='imp_edge_flow', edge_eff='imp_edge_eff'
     c_node_eff: effort at the seller node
     d_node_flow: flow at the buyer node
     """    
-    df=df.copy()
+    df=dfi.copy()
 
     #debtors related attributes will be whole potential flow
     for d in df.debtor_name_1.unique():
@@ -46,4 +46,6 @@ def build_bgtfeat_imp(dfi, g, edge_flow='imp_edge_flow', edge_eff='imp_edge_eff'
         df.loc[df.customer_name_1==c, c_node_eff] = np.nansum(df.loc[df.customer_name_1==c, edge_eff])
         df.loc[df.customer_name_1==c, node_flow] = np.nansum(df.loc[df.customer_name_1==c, edge_flow])
         df.loc[df.customer_name_1==c, energy] = np.nansum(df.loc[df.customer_name_1==c, edge_eff]*df.loc[df.customer_name_1==c, d_node_flow])
+
+    return df
 
