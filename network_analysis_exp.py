@@ -61,3 +61,36 @@ def node_neighborhood(G, node, n, nfilter=[], n_only=False):
         return list(nodes)
 
 
+def node_component(node, graphdict):
+    """
+    This function, given a node and a dictionary of graphs, will return the dictionary index of the graph containing the input node
+    """
+    for graph in graphdict.keys():
+        if node in set(graphdict[graph].node):
+            return graph
+
+
+
+def including_degree(G, node, nfilter, comp_dict=comp_dict):
+    """
+    This function, given a graph G, a starting node, and a list of nodes to include in the path, will return the maximum degree of connections including those nodes in a shortest-path plus the immediate
+    neighbors to reach.
+    In addition to the maximum degree, it will add a set of the last hybrids reached, a set of the last nodes of the last neighborhood and the number of the component this path belongs to. 
+    """
+    degree=1
+    check = node_neighborhood(G, node, degree, nfilter, n_only=True)
+    hybrids_at_this_deg = [n for n in check if (n in nfilter and n!=node)]
+    last_hybrids=hybrids_at_this_deg[:]
+    last_reached = set(check).difference(set(hybrids_at_this_deg))
+    
+    while len(hybrids_at_this_deg)>0:
+        degree+=1
+        check = node_neighborhood(G, node, degree, nfilter, n_only=True)
+        hybrids_at_this_deg = [n for n in check if (n in nfilter and n!=node)]
+        last_reached = set(check).difference(set(hybrids_at_this_deg))
+        if len(hybrids_at_this_deg)>1:
+            last_hybrids = hybrids_at_this_deg[:]
+            
+    return degree, last_hybrids, last_reached, node_component(node, comp_dict)   
+
+
