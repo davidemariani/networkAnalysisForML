@@ -221,38 +221,3 @@ def nodes_post(nodes, edges, nodes_name_column, nodes_size_range = (6,15), nxk =
 
 
 
-def create_directed_graphs(components, df, red_coeff):
-    """
-    This function, given a list of graph components and a dataframe of instruments df, recreate the corresponding directed graphs,
-    assigning weights to the edges depending on energy values at the corresponding buyer nodes.
-    Directions go from buyer to seller.
-    red_coeff is a 'reduction coefficient' for the flow values to be assigned to each graph's edges
-    """
-    
-    dir_graphs=[]
-    
-    for comp in components:
-        di_g = nx.DiGraph()
-
-        for cus in df.loc[df.customer_name_1.isin(comp), 'customer_name_1'].unique():
-            df_tmp = df[df.customer_name_1==cus]
-
-
-            for debt in df_tmp['debtor_name_1'].unique():
-
-                if cus!=debt: #avoiding self-loops
-
-                    df_tmp2 = df_tmp[df_tmp.debtor_name_1==debt]
-                    flow = round(df_tmp2.imp_energy.unique()[0]/(red_coeff),3)
-
-                    if flow<1:
-                        flow=1
-                        weight_=red_coeff
-                    else:
-                        weight_ = abs(round(red_coeff/flow,3))
-
-                    di_g.add_edge(debt, cus,capacity=int(flow), weight=int(weight_))
-
-        dir_graphs.append(di_g)
-    
-    return dir_graphs
