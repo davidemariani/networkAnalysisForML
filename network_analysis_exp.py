@@ -71,7 +71,7 @@ def node_component(node, graphdict):
 
 
 
-def including_degree(G, node, nfilter, comp_dict=comp_dict):
+def including_degree(G, node, nfilter, comp_dict):
     """
     This function, given a graph G, a starting node, and a list of nodes to include in the path, will return the maximum degree of connections including those nodes in a shortest-path plus the immediate
     neighbors to reach.

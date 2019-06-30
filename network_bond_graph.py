@@ -53,7 +53,7 @@ def build_bgtfeat(dfi, g, edge_flow='imp_edge_flow', edge_eff='imp_edge_eff', no
 
 
 
-def create_flow_graphs(dict_start_end, comp_dict=comp_dict):
+def create_flow_graphs(dict_start_end, comp_dict):
     """
     This function, given a dictionary of starting nodes as keys and list of sink nodes as values and a dictionary of components, will use end and start nodes
     to calculate the flow through the corresponding component contained in the second dictionary, returning a graph with a flow assigned to each edge.
@@ -89,5 +89,5 @@ def create_flow_graphs(dict_start_end, comp_dict=comp_dict):
                     error_count+=1
                     print("ERROR {} : there were problems with path {}  -  {} of length {} in component {}".format(error_count, start, end2, dict_start_end[start][0], comp_number))
                     pass
-    
+    print('{} graphs successfully created'.format(len(graphs)))
     return graphs
