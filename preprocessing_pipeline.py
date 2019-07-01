@@ -67,11 +67,6 @@ class LogScaler(BaseEstimator, TransformerMixin):
         nanidx = np.isnan(X1)
         X2 = X1[~nanidx]
         X2[X2 < self.ZeroNegReplace] = self.ZeroNegReplace
-        #badidx = X2 < 1e-10
-        #print('LogScaler: {:} nans, {:} bads'.format(sum(nanidx), sum(badidx)))
-        #if (sum(badidx)>0):
-        #    print("many bad indices!")
-        #    print(X2[badidx])
 
         X1[~nanidx] = np.log(X2)
         return X1
@@ -204,5 +199,24 @@ def transform_train_test(train_all, test_all, preproc_pipeline, target_feature):
 
     #group the category labels together for charting
     feature_labels = preproc_pipeline.transformed_names_
+
+    return y_train, X_train, y_test, X_test, feature_labels
+
+
+def preprocessing_pipeline(df, feat_str, feat_quant, feat_exp, feat_date, target_feature, testset_control_feature, timewise = False,  
+                           trainsize=None, testsize=None, testdate=None):
+    """
+    This function execute the whole preprocessing pipeline on a given dataframe, allowing the choice between timewise splitting and 
+    shuffle splitting of the dataset between train and test with the boolean parameter 'timewise'.
+    The function will return y train and test, x train and test and feature labels list.
+    """
+    preproc_pipeline = preprocessing_pipeline(feat_str, feat_quant, feat_exp, feat_date)
+
+    if timewise:
+        train_all, test_all = time_train_test(df, trainsize, testsize, 'invoice_date', testdate)
+
+    train_all, test_all = shuffle_train_test(df, trainsize, testsize, 'invoice_date')
+
+    y_train, X_train, y_test, X_test, feature_labels = transform_train_test(train_all, test_all, preproc_pipeline, target_feature)
 
     return y_train, X_train, y_test, X_test, feature_labels
