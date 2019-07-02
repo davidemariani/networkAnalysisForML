@@ -158,7 +158,7 @@ def shuffle_train_test(df, trainsize, testsize, testset_control_feature):
 
 
 
-def time_train_test(df, trainsize, testsize, testset_control_feature, testdate):
+def time_train_test(df, testset_control_feature, testdate):
     """
     This function, given a dataset, train and test size and a time control feature, will return train set and test set
     based on the initial dataset split by a date for which all the instruments before that date will form the train set,
@@ -185,7 +185,7 @@ def transform_train_test(train_all, test_all, preproc_pipeline, target_feature):
 
     #prepare and save train sets
     #separate features and labels
-    y_train = train_all[targetfeature].copy().values
+    y_train = train_all[target_feature].copy().values
     print("Train y: {:} total, {:} class_1 observations ({:.2f}%) > 0".format(y_train.shape[0], sum(y_train>0), sum(y_train>0)/y_train.shape[0]*100))
     #apply the pipeline to the training set
     print("pipeline fit_transform for train set...")
@@ -193,7 +193,7 @@ def transform_train_test(train_all, test_all, preproc_pipeline, target_feature):
 
     #prepare and save test sets
     #separate features and labels
-    y_test = test_all[targetfeature].copy().values
+    y_test = test_all[target_feature].copy().values
     print("Test y: {:} total, {:} class_1 observations ({:.2f}%) > 0".format(y_test.shape[0], sum(y_test>0), sum(y_test>0)/y_test.shape[0]*100))
     #apply the pipeline to the training set
     print("pipeline transform only for test set...")
@@ -206,7 +206,7 @@ def transform_train_test(train_all, test_all, preproc_pipeline, target_feature):
 
 
 
-def save_preproc_files(outputfolder, postfix, preproc_pipeline, y_train, X_train, y_test, X_test, feature_labels):
+def save_preproc_files(outputfolder, prefix, preproc_pipeline, y_train, X_train, y_test, X_test, feature_labels):
     """
     This function will save all the preprocessing files into a given datafolder in pickle format
     """
@@ -218,10 +218,10 @@ def save_preproc_files(outputfolder, postfix, preproc_pipeline, y_train, X_train
         month = '0'+month
     day = str(datetime.datetime.now().day)
 
-    prefix = year+month+day+'_'+str(datetime.datetime.now().hour)+str(datetime.datetime.now().minute)
+    postfix = '_'+year+month+day+'_'+str(datetime.datetime.now().hour)+str(datetime.datetime.now().minute)
 
     #saving training and test sets
-    print("Saving with file name postfix {:}...".format(postfix))
+    print("Saving with file name prefix {:} and postfix {:}...".format(prefix, postfix))
     pickle.dump([X_train, y_train, feature_labels], open(outputfolder+prefix+"_traindata" + postfix+'.pkl', "wb"), protocol=4)
     pickle.dump([X_test, y_test, feature_labels], open(outputfolder+prefix+"_testdata" + postfix+'.pkl', "wb"), protocol=4)
     pickle.dump(preproc_pipeline, open(outputfolder+prefix+"_preproc_pipeline" + postfix+'.pkl', "wb"))
@@ -231,7 +231,7 @@ def save_preproc_files(outputfolder, postfix, preproc_pipeline, y_train, X_train
 
 
 def preprocessing_pipeline(df, feat_str, feat_quant, feat_exp, feat_date, target_feature, testset_control_feature, timewise = False,  
-                           trainsize=None, testsize=None, testdate=None, save_to_file=False, outputfolder='', postfix=''):
+                           trainsize=None, testsize=None, testdate=None, save_to_file=False, outputfolder='', prefix=''):
     """
     This function execute the whole preprocessing pipeline on a given dataframe, allowing the choice between timewise splitting and 
     shuffle splitting of the dataset between train and test with the boolean parameter 'timewise'.
@@ -239,15 +239,19 @@ def preprocessing_pipeline(df, feat_str, feat_quant, feat_exp, feat_date, target
     """
     preproc_pipeline = features_pipeline(feat_str, feat_quant, feat_exp, feat_date)
 
+    prefix1 = ''
+
     if timewise:
-        train_all, test_all = time_train_test(df, trainsize, testsize, testset_control_feature, testdate)
+        prefix1 = 'time_'+str(testdate).split(' ')[0]+'_'
+        train_all, test_all = time_train_test(df, testset_control_feature, testdate)
     else:
+        prefix1 = 'shuffle_'
         train_all, test_all = shuffle_train_test(df, trainsize, testsize, testset_control_feature)
 
     y_train, X_train, y_test, X_test, feature_labels = transform_train_test(train_all, test_all, preproc_pipeline, target_feature)
 
     if save_to_file:
-        save_preproc_files(outputfolder, postfix, preproc_pipeline, y_train, X_train, y_test, X_test, feature_labels)
+        save_preproc_files(outputfolder, prefix1+prefix, preproc_pipeline, y_train, X_train, y_test, X_test, feature_labels)
 
     return y_train, X_train, y_test, X_test, feature_labels
 
