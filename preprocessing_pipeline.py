@@ -92,7 +92,7 @@ class CapOutliers(BaseEstimator, TransformerMixin):
         return X1
 
 
-def preprocessing_pipeline(feat_str, feat_quant, feat_exp, feat_date):
+def features_pipeline(feat_str, feat_quant, feat_exp, feat_date):
     """
     This function, given the lists of different type of features, returns a scikit learn preprocessing pipeline
     ready to be used with the modeule 'transform'
@@ -136,6 +136,8 @@ def shuffle_train_test(df, trainsize, testsize, testset_control_feature):
     Train set and test set will be created in shuffle mode, without any clear timewise 'cut'.
     """
 
+    df = df.copy()
+
     print("Sampling {:} for train and {:} for test sets by shuffling...".format(trainsize, testsize))
 
     df[testset_control_feature + "_year"] = df[testset_control_feature].apply(lambda x: x.year)
@@ -148,7 +150,7 @@ def shuffle_train_test(df, trainsize, testsize, testset_control_feature):
     df = df.reset_index(drop=True)
     
     #constructing oversampled class y=1 train and test sets:
-    for train_index, test_index in split.split(df, df[testtestset_control_feature]):
+    for train_index, test_index in split.split(df, df[testset_control_feature+"_year"]):
         train_all = df.loc[train_index]
         test_all = df.loc[test_index]
 
@@ -179,7 +181,7 @@ def transform_train_test(train_all, test_all, preproc_pipeline, target_feature):
     will use a preproc_pipeline to transform the data returning train and test set ready for the models
     """
 
-    print("Running the pipeline, target feature is {:}...".format(targetfeature))
+    print("Running the pipeline, target feature is {:}...".format(target_feature))
 
     #prepare and save train sets
     #separate features and labels
@@ -235,7 +237,7 @@ def preprocessing_pipeline(df, feat_str, feat_quant, feat_exp, feat_date, target
     shuffle splitting of the dataset between train and test with the boolean parameter 'timewise'.
     The function will save the files as pickle and return y train and test, x train and test and feature labels list.
     """
-    preproc_pipeline = preprocessing_pipeline(feat_str, feat_quant, feat_exp, feat_date)
+    preproc_pipeline = features_pipeline(feat_str, feat_quant, feat_exp, feat_date)
 
     if timewise:
         train_all, test_all = time_train_test(df, trainsize, testsize, testset_control_feature, testdate)
