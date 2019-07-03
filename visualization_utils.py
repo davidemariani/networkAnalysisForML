@@ -659,9 +659,10 @@ def model_oostest(model, X_test, y_test):
     """
     This function tests the model performance on out of sample data
     """
-    y_score = model.predict_proba(X_test)[:,1]
-    m_auc = roc_auc_score(y_test, y_score)
-    return m_auc
+    y_scores = model.predict_proba(X_test)[:,1]
+    fpr, tpr, thresholds = roc_curve(y_test, y_scores)
+    auc = roc_auc_score(y_test, y_scores)
+    return {'fpr':fpr, 'tpr':tpr, 'auc':auc}
 
 
 def plot_rocs(metrics, label=None, 
