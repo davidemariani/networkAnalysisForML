@@ -13,27 +13,25 @@
 import pandas as pd
 import numpy as np
 import pickle
-import datetime as dt
+import datetime 
 
 
-def save_sk_model(datafolder, postfix, model_name):
+def save_sk_model(model, datafolder, model_name, prefix):
     """
-    This function saves a scikit learn model to pickle
+    This function saves a scikit learn model in pickle format
     """
 
-#saving sgd
-#if (int(cfg["modelsave"])):
-#        logpostfix = str(int(dt.datetime.now().timestamp()))[4:] #uniqueish name postfix
-#        filename = datafolder + cfg["modelfolder"] + "linear" + logpostfix + ".pickle"
-#        log.info("Saving model to " + filename)
-#        with open(filename, "wb") as pickle_file:
-#            pickle.dump(sgd_clf, pickle_file)
+    #creating reference for output file
+    year = str(datetime.datetime.now().year)[2:]
+    month = str(datetime.datetime.now().month)
+    if len(month)==1:
+        month = '0'+month
+    day = str(datetime.datetime.now().day)
 
+    postfix = '_'+year+month+day+'_'+str(datetime.datetime.now().hour)+str(datetime.datetime.now().minute)
 
-#saving rf
-#if (int(cfg["modelsave"])):
-#        logpostfix = str(int(dt.datetime.now().timestamp()))[4:] #uniqueish name postfix
-#        filename = datafolder + cfg["modelfolder"] + "forest" + logpostfix + ".pickle"
-#        log.info("Saving model to " + filename)
-#        with open(filename, "wb") as pickle_file:
-#            pickle.dump(forest_clf, pickle_file)
+    filename = datafolder+prefix +'_'+ model_name + postfix+'.pkl'
+
+    print("Saving model to {}".format(filename))
+    with open(filename, "wb") as pickle_file:
+            pickle.dump(model, pickle_file)
