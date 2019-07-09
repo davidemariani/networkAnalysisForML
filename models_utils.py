@@ -55,6 +55,13 @@ def model_oostest(model, X_test, y_test):
     """
     This function tests the model performance on out of sample data
     """
+
+    #cm count
+    y_score = model.predict(X_test)
+    cm = confusion_matrix(y_test, y_score)
+    print(cm)
+
+    #cm ratio and auc
     y_scores = model.predict_proba(X_test)[:,1]
     fpr, tpr, thresholds = roc_curve(y_test, y_scores)
     auc = roc_auc_score(y_test, y_scores)
@@ -141,9 +148,6 @@ def models_loop(models, datapath, prefixes, postfixes, trainfile='_traindata', t
 
             #testing on out of sample observations
             print('Testing...')
-            y_score = model.predict(X_test)
-            cm = confusion_matrix(y_test, y_score)
-            print(cm)
             model_oos = model_ootest(model, X_test, y_test)
             results[model_name+'_'+prefix+'testing'] = model_oos
 
