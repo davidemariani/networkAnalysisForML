@@ -95,12 +95,8 @@ def models_loop(models, datapath, prefixes, postfixes, trainfile='_traindata', t
 
 
 
-
-
-
-
 def main():
-    print("models_utils.py loaded and ready")
+    print("models_utils.py executed..")
 
 
 if __name__ == "__main__":
