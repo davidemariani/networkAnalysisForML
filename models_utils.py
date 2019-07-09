@@ -56,7 +56,17 @@ def models_loop(models, datapath, prefixes, postfixes, trainfile='_traindata', t
     - the postfixes for each of them (list)
     - traindata and testdata name are default
     - number of folds for cross validation phase
+
+    It returns a dictionary containing bokeh plots of the AUC curve for both validation and testing performances of each experiment,
+    and another dictionary containing the results from validation and testing phase.
+    This function' main purpose is the comparison between validation and testing in order to tune the model during calibration.
     """
+
+    #results storage dictionary
+    results = {}
+
+    #visualizations storage dictionary
+    vizs = {}
 
     #check that the lists have consistent length
     if len(prefix) == len(postfix):
@@ -90,7 +100,9 @@ def models_loop(models, datapath, prefixes, postfixes, trainfile='_traindata', t
             model_oos = model_ootest(model, X_test, y_test)
 
             #visualize AUC curves
-            model_auc_vizs = 
+            model_auc_vizs = plot_rocs([model_kfold, model_oos], p_width=600, p_height=600, model_appendix=['SGD - 5folds','SGD - test'])
+
+    #PLEASE CONTINUE!!!
 
 
 
