@@ -93,7 +93,7 @@ def save_sk_model(model, datafolder, model_name, prefix):
             pickle.dump(model, pickle_file)
 
 
-def models_loop(models, datapath, prefixes, postfixes, trainfile='_traindata', testfile='_testdata',
+def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata', testfile='_testdata',
                 CrossValFolds=5, save_model=False, output_path='', model_name='', prefix=''):
     """
     This function' main purpose is the comparison between validation and testing in order to tune the model during calibration.
@@ -113,7 +113,7 @@ def models_loop(models, datapath, prefixes, postfixes, trainfile='_traindata', t
     results = {}
 
     #check that the lists have consistent length
-    if len(prefix) == len(postfix):
+    if len(prefixes) == len(postfixes):
         pass
     else:
         print("Inputs length is inconsistent! Please check that number of prefixes and postfixes is the same.")
@@ -125,35 +125,44 @@ def models_loop(models, datapath, prefixes, postfixes, trainfile='_traindata', t
         postfix = postfixes[p]
 
         for loop in range(len(models)):
-            #loading transformed train and test sets
+            #selecting model and transformed train and test sets
+            model = models[loop]
             postfix = postfixes[loop]
 
-            print("Training, validation, testing and performance visualization of experiment with prefix {} and postfix {}".format(prefix, postfix))
+            modeltype = str(model).split('(')[0]
 
-            [X_train, y_train, feature_labels] = pd.read_pickle(datafolder + prefix + trainfile + postfix+'.pkl') 
-            [X_test, y_test, feature_labels] = pd.read_pickle(datafolder + prefix + testfile + postfix+'.pkl') 
+            print("Training, validation and testing of experiment with prefix {} and postfix {} using {}".format(prefix, postfix, modeltype))
 
-            #loading model and retrieving its data
-            model = models[loop]
-            model_name = str(model).split('(')[0]
+            #loading preprocessed data
+            trainfiles = datafolder + prefix + trainfile + postfix+'.pkl'
+            testfiles = datafolder + prefix + testfile + postfix+'.pkl'
+
+            print("-Loading preprocessed data...")
+            print("training files: {}".format(trainfiles))
+            print("testing files: {}".format(testfiles))
+            [X_train, y_train, feature_labels] = pd.read_pickle(trainfiles) 
+            [X_test, y_test, feature_labels] = pd.read_pickle(testfiles) 
 
             #fitting model
+            print('- Training...')
             model.fit(X_train, y_train)
 
             #validation performance
-            print('Validation...')
+            print('- Validation...')
             model_kfold = model_diag(model, X_train, y_train, run_confusion_matrix=True, CrossValFolds=CrossValFolds)
-            results[model_name+'_'+prefix+'validation'] = model_kfold
-            print()
+            results[modeltype+'_'+prefix+'validation'] = model_kfold
 
             #testing on out of sample observations
-            print('Testing...')
-            model_oos = model_ootest(model, X_test, y_test)
-            results[model_name+'_'+prefix+'testing'] = model_oos
+            print('- Testing...')
+            model_oos = model_oostest(model, X_test, y_test)
+            results[modeltype+'_'+prefix+'testing'] = model_oos
 
             #saving the model
             if save_model:
+                print('- Saving the model to {}...'.format(output_path))
                 save_sk_model(model, output_path, model_name, prefix)
+
+            print()
 
     return results
 
