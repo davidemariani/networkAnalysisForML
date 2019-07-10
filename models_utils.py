@@ -94,7 +94,7 @@ def save_sk_model(model, datafolder, model_name, prefix):
 
 
 def models_loop(models, datapath, prefixes, postfixes, trainfile='_traindata', testfile='_testdata',
-                CrossValFolds=5, save_sk_model=False):
+                CrossValFolds=5, save_model=False, output_path='', model_name='', prefix=''):
     """
     This function' main purpose is the comparison between validation and testing in order to tune the model during calibration.
     It performs training, validation and testing of one or more models on one or more credit events, requiring as inputs:
@@ -150,6 +150,10 @@ def models_loop(models, datapath, prefixes, postfixes, trainfile='_traindata', t
             print('Testing...')
             model_oos = model_ootest(model, X_test, y_test)
             results[model_name+'_'+prefix+'testing'] = model_oos
+
+            #saving the model
+            if save_model:
+                save_sk_model(model, output_path, model_name, prefix)
 
     return results
 
