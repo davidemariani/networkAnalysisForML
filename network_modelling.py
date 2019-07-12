@@ -220,4 +220,31 @@ def nodes_post(nodes, edges, nodes_name_column, nodes_size_range = (6,15), nxk =
     return pos, sizes_dict
 
 
+def network_info(G, edges, nodes, nodes_size_range = (6,15), 
+                 to_highlight = 'is_pastdue90', circularLayout = False):
+    """
+    This function will add information to edges and nodes dataset, as well as the graph, to prepare them for visualization.
+    The output will be a networkx graph, an updated edges dataset and an updated nodes dataset.
+    """
+
+    edges_tuples = [t for t in G.edges] #update with the actual number of edges after network building
+
+    #nodes size
+    max_size = nodes_size_range[1]
+    min_size = nodes_size_range[0]
+    nodes['size'] = np.around(np.interp(nodes['centrality'], (nodes['centrality'].min(), nodes['centrality'].max()), (min_size, max_size)),2)
+
+    #nodes nx attributes
+    node_size = dict([tuple(x) for x in nodes[['Company_Name', 'size']].values])
+    node_type = dict([tuple(y) for y in nodes[['Company_Name', 'Type_2']].values])
+
+    edges_highlight = dict(zip(edges_tuples, [edges.loc[(edges['xs'].isin(p)) & (edges['ys'].isin(p)), to_highlight].unique()[0] for p in edges_tuples]))
+
+    nx.set_node_attributes(G, name='size', values=node_size) 
+    nx.set_node_attributes(G, name='type', values=node_type)
+    nx.set_edge_attributes(G, name='highlight', values=edges_highlight)
+
+    return G, edges, nodes
+
+
 
