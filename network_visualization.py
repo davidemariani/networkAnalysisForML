@@ -137,7 +137,7 @@ def visualize_graph(graph, edges, nodes, nodes_name_column='Company_Name', nodes
     return plot
 
 
-def graph_from_coordinates(nodes, edges, nodes_name_column='Company_Name', nodes_size_column='size', nodes_type_column='Type_2', nodes_coord_column='coord',
+def graph_from_coordinates(nodes, edges, nodes_name_column='Company_Name', nodes_size_column='size', nodes_type_column='Type_2', nodes_coord_column='coords',
                  edges_start_column='xs', edges_end_column='ys',
                 nodes_colors = [TTQcolor['sky'], TTQcolor['richPeach'], TTQcolor['Salmon']],
                  edges_colors = [TTQcolor['azureBlue'], TTQcolor['warningRed']],
