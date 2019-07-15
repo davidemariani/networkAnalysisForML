@@ -239,20 +239,17 @@ def distplot(series,title = '', yaxisname = '', xaxisname = '', density = False,
 
     return f
 
-def stacked_distplot(*args, title = '', yaxisname = '', xaxisname = '', density = False, bins=50
-                     , colors = [TTQcolor['azureBlue'], TTQcolor['algae']], plot_w = 1000, plot_h=750,
+def stacked_distplot(*args, title = '', yaxisname = '', xaxisname = '', density = False, bins=50,
+                    colors = [TTQcolor['azureBlue'], TTQcolor['algae']], plot_w = 1000, plot_h=750,
                      alphacolor = 0.5, legendnames =  ['',''], legendlocation = 'top_left',
                      logscale = False, boxplot = False, boxtext = True, boxtextsize = '8pt', box_outliers=True,
-                     outliers_size = 2):
+                     outliers_size = 2, x_axis_type='auto'):
     """
     Given an unspecified number of series as main arguments,
     this function generates a distribution plot, comparing them with a stack plot.
     If boxplot = True, it will create a boxplot for each series, using the function boxplot_hor
     """
-    f = figure(plot_width=plot_w, plot_height=plot_h, title = title)
-
-    if logscale:
-        f = figure(plot_width=plot_w, plot_height=plot_h, title = title, x_axis_type = 'log')
+    f = figure(plot_width=plot_w, plot_height=plot_h, title = title, x_axis_type = x_axis_type)
     
     min_range=min([min(i) for i in args])
     max_range=max([max(j) for j in args])
