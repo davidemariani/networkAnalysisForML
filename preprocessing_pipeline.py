@@ -92,6 +92,24 @@ class CapOutliers(BaseEstimator, TransformerMixin):
         return X1
 
 
+
+class SignLogScaler(BaseEstimator, TransformerMixin):
+    """
+    Auxiliar class for scikit learn preprocessing module that calculates the log for both positive and negative
+    numbers, returning sign(x)*log(abs(x)+1) for the latter case.
+    """
+
+    def __init__(self):
+        return
+    def fit(self, X, y=None):
+        return self
+    def transform(self, X):
+        X1=np.float32(X.copy())
+        nanidx = np.isnan(X1)
+        X1[~nanidx] = np.sign(X1[~nanidx]) * np.log(np.abs(X1[~nanidx])+1.)
+        return X1
+
+
 def features_pipeline(feat_str, feat_quant, feat_exp, feat_date):
     """
     This function, given the lists of different type of features, returns a scikit learn preprocessing pipeline
