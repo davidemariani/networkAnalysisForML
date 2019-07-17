@@ -316,13 +316,9 @@ def timeSeries(df, colors, title, plot_w=1800, plot_h =450, showY=True, rightY=F
     
     #main figure settings
     ts = figure(plot_width =plot_w, plot_height =plot_h, x_range = labels, 
-                y_range=(range_min, range_max), title = title)
+                y_range=(range_min, range_max), title = title,)
     ts.xaxis.major_label_orientation = np.pi/4
     ts.xaxis.major_label_text_font_size = x_axis_ticks_font_size
-    
-    #legend settings
-    ts.legend.location = "top_left"
-    ts.legend.click_policy="hide"
     
     #axis settings
     ts.yaxis.visible = showY
@@ -379,7 +375,9 @@ def timeSeries(df, colors, title, plot_w=1800, plot_h =450, showY=True, rightY=F
     if not showYGrid:
         ts.ygrid.grid_line_color = None
     
-    
+    #legend settings
+    ts.legend.location = "top_left"
+    ts.legend.click_policy="hide"
     ts.legend.label_text_font_size= legend_font_size
     
     if output_file_name!='':
