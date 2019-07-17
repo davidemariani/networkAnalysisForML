@@ -192,7 +192,7 @@ def series_trend(s, applylog=True):
     return res
 
 
-def add_node_stats(inst, igroup, idx, id, ii, decision_date_col, prefix, prefix_read=''):
+def add_node_stats(inst, igroup, idx, id, ii, prefix, decision_date_col="value_date", prefix_read=''):
     """
     This function adds stats to each node, both in the general case and the snapshots creation systems.
     inst: instruments dataframe sorted by invoice_date
