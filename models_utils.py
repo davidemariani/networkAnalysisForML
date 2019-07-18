@@ -98,11 +98,15 @@ def save_sk_model(model, datafolder, model_name, prefix):
 
     postfix = '_'+year+month+day+'_'+str(datetime.datetime.now().hour)+str(datetime.datetime.now().minute)
 
-    filename = datafolder+prefix +'_'+ model_name + postfix+'.pkl'
+    filename = prefix +'_'+ model_name + postfix+'.pkl'
 
-    print("Saving model to {}".format(filename))
-    with open(filename, "wb") as pickle_file:
+    filepath = datafolder+filename
+
+    print("Saving model to {}".format(datafolder+filepath))
+    with open(filepath, "wb") as pickle_file:
             pickle.dump(model, pickle_file)
+
+    return (filename, filepath)
 
 
 def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata', testfile='_testdata',
@@ -172,7 +176,7 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
             #saving the model
             if save_model:
                 print('- Saving the model to {}...'.format(output_path))
-                save_sk_model(model, output_path, model_name, prefix)
+                filename, filepath = save_sk_model(model, output_path, model_name, prefix)
 
             if mlf_tracking:
                 with mlflow.start_run():
@@ -201,6 +205,14 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
 
                     #model info and hyperparameters tracking
                     mlflow.log_param("model_type", modeltype)
+
+                    if save_model:
+                        mlflow.log_param("model_filename", filename)
+                        mlflow.log_param("model_filepath", filepath)
+                    else:
+                        mlflow.log_param("model_filename", None)
+                        mlflow.log_param("model_filepath", None)
+
                     hpar = model.get_params()
                     for par_name in hpar.keys():
                         mlflow.log_param(par_name, hpar[par_name])
