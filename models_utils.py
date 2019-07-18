@@ -21,6 +21,23 @@ from sklearn.metrics import precision_recall_curve, roc_curve, roc_auc_score, co
 from sklearn.linear_model import SGDClassifier, LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 
+import mlflow
+import mlflow.sklearn
+
+
+def cm_ratio(cm):
+    """
+    This function takes as an input a scikit learn confusion matrix and returns it with ratio values.
+    """
+
+    rcm = np.empty([2,2])
+    rcm[0, :] = cm[0, :] / float(sum(cm[0, :]))
+    rcm[1, :] = cm[1, :] / float(sum(cm[0, :]))
+        
+    print("Confusion matrix: \n" + np.array_str(rcm, precision=5, suppress_small=True))
+
+    return rcm
+
 
 def model_diag(model, X_train, y_train, CrossValFolds=5, run_confusion_matrix=False):
     """
@@ -41,14 +58,9 @@ def model_diag(model, X_train, y_train, CrossValFolds=5, run_confusion_matrix=Fa
     
     if run_confusion_matrix:
         cm = confusion_matrix(y_train, y_pred)
-        #rescale the confusion matrix
-        rcm = np.empty([2,2])
-        rcm[0, :] = cm[0, :] / float(sum(cm[0, :]))
-        rcm[1, :] = cm[1, :] / float(sum(cm[0, :]))
-        
-        print("Confusion matrix: \n" + np.array_str(rcm, precision=5, suppress_small=True))
+        rcm = cm_ratio(cm)
     
-    return {'fpr':fpr, 'tpr':tpr, 'auc':auc}
+    return {'fpr':fpr, 'tpr':tpr, 'auc':auc, 'rcm':rcm}
 
 
 def model_oostest(model, X_test, y_test):
@@ -56,19 +68,19 @@ def model_oostest(model, X_test, y_test):
     This function tests the model performance on out of sample data
     """
 
-    #cm count
+    #cm
     y_score = model.predict(X_test)
     cm = confusion_matrix(y_test, y_score)
-    print(cm)
+    rcm = cm_ratio(cm)
 
-    #cm ratio and auc
+    #metrics
     y_scores = model.predict_proba(X_test)[:,1]
     fpr, tpr, thresholds = roc_curve(y_test, y_scores)
     auc = roc_auc_score(y_test, y_scores)
 
     print("AUC {:.3f}".format(auc))
 
-    return {'fpr':fpr, 'tpr':tpr, 'auc':auc}
+    return {'fpr':fpr, 'tpr':tpr, 'auc':auc, 'rcm':rcm}
 
 
 
@@ -94,7 +106,7 @@ def save_sk_model(model, datafolder, model_name, prefix):
 
 
 def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata', testfile='_testdata',
-                CrossValFolds=5, save_model=False, output_path='', model_name='', prefix=''):
+                CrossValFolds=5, save_model=False, output_path='', model_name='', prefix='', mlf_tracking=False):
     """
     This function' main purpose is the comparison between validation and testing in order to tune the model during calibration.
     It performs training, validation and testing of one or more models on one or more credit events, requiring as inputs:
@@ -161,6 +173,51 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
             if save_model:
                 print('- Saving the model to {}...'.format(output_path))
                 save_sk_model(model, output_path, model_name, prefix)
+
+            if mlf_tracking:
+                with mlflow.start_run():
+
+                    print("Tracking the experiment on mlflow...")
+
+                    #tpr_kf = model_kfold['tpr']
+                    #fpr_kf = model_kfold['fpr']
+                    auc_kf = model_kfold['auc']
+
+                    #tpr = model_oos['tpr']
+                    #fpr = model_oos['fpr']
+                    auc = model_oos['auc']
+
+
+                    #experiment type tracking
+                    mlflow.log_param("experiment_type", prefix)
+
+                    #source file tracking
+                    mlflow.log_param("train_file_path", trainfiles)
+                    mlflow.log_param("train_file_name", prefix + trainfile + postfix+'.pkl')
+                    mlflow.log_param("test_file_path", testfiles)
+                    mlflow.log_param("test_file_name", prefix + testfile + postfix+'.pkl')
+                    mlflow.log_param("train_size", X_train.shape[0])
+                    mlflow.log_param("test_size", X_test.shape[0])
+
+                    #model info and hyperparameters tracking
+                    mlflow.log_param("model_type", modeltype)
+                    hpar = model.get_params()
+                    for par_name in hpar.keys():
+                        mlflow.log_param(par_name, hpar[par_name])
+
+                    #kfold validation metrics tracking
+                    mlflow.log_metric("validation_nfolds", CrossValFolds)
+                    mlflow.log_metric("validation_auc", auc_kf)
+                    #mlflow.log_metric("validation_tpr", tpr_kf)
+                    #mlflow.log_metric("validation_fpr", fpr_kf)
+
+
+                    #test metrics tracking
+                    mlflow.log_metric("test_auc", auc)
+                    #mlflow.log_metric("test_tpr", tpr)
+                    #mlflow.log_metric("test_fpr", fpr)
+
+                    mlflow.sklearn.log_model(model, "model")
 
             print()
 
