@@ -271,7 +271,7 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
                         mlflow.log_metric("val_auc_fold_"+str(fold), auc_kf_fold)
 
                     #test metrics tracking
-                    auc = model_oos['auc']
+                    auc = round(model_oos['auc'],3)
                     mlflow.log_metric("test_auc", auc)
 
                     #storing the model file as pickle
