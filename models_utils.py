@@ -16,9 +16,9 @@ import numpy as np
 import pickle
 import datetime 
 
-from sklearn.model_selection import cross_val_predict, RandomizedSearchCV
+from sklearn.model_selection import cross_val_predict, cross_validate
 from sklearn.metrics import precision_recall_curve, roc_curve, roc_auc_score, confusion_matrix
-from sklearn.linear_model import SGDClassifier, LogisticRegression
+from sklearn.linear_model import SGDClassifier
 from sklearn.ensemble import RandomForestClassifier
 
 import mlflow
@@ -39,28 +39,31 @@ def cm_ratio(cm):
     return rcm
 
 
-def model_diag(model, X_train, y_train, CrossValFolds=5, run_confusion_matrix=False):
+def model_diag(model, X_train, y_train, CrossValFolds=5, scoring = {'AUC':'roc_auc'}):
     """
     This function returns as output false positive rate, true positive rate and auc score in the form of a dictionary.
     It needs model, training x and training y as inputs.
     """
-    y_pred = cross_val_predict(model, X_train, y_train, cv=CrossValFolds)
     
-    if hasattr(model, "decision_function"):
+    validation = cross_validate(model, X_train, y_train, cv=CrossValFolds, scoring=scoring) #cross_validate is used to evaluate each fold separately
+    
+    if hasattr(model, "decision_function"): #cross_val_predict is used to make predictions on each data point using stratified folds (evaluation of the whole set)
         y_scores = cross_val_predict(model, X_train, y_train, cv=CrossValFolds, method="decision_function")
     else:
         y_proba = cross_val_predict(model, X_train, y_train, cv=CrossValFolds, method="predict_proba")
         y_scores = y_proba[:,1]
-    fpr, tpr, thresholds = roc_curve(y_train, y_scores) #false positive rate, true positive rate and thresholds
+    fpr, tpr, thresholds = roc_curve(y_train, y_scores) #false positive rates, true positive rates and thresholds
     auc = roc_auc_score(y_train, y_scores)
     
     print("AUC {:.3f}".format(auc))
-    
-    if run_confusion_matrix:
-        cm = confusion_matrix(y_train, y_pred)
-        rcm = cm_ratio(cm)
-    
-    return {'fpr':fpr, 'tpr':tpr, 'auc':auc, 'rcm':rcm}
+
+    results = {'fpr':fpr, 'tpr':tpr, 'auc':auc}
+
+    for score in list(scoring.keys()):
+        for fold in range(1, len(validation['test_'+score])+1): #saving auc score at each fold of cross validation
+            results[score+'_fold_'+str(fold)] = validation['test_'+score][fold-1]
+
+    return results
 
 
 def model_oostest(model, X_test, y_test):
@@ -109,8 +112,8 @@ def save_sk_model(model, datafolder, model_name, prefix):
     return (filename, filepath)
 
 
-def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata', testfile='_testdata',
-                CrossValFolds=5, save_model=False, output_path='../data/models/', model_name='', mlf_tracking=False):
+def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata', testfile='_testdata', scoring = {'AUC':'roc_auc'},
+                CrossValFolds=5, save_model=False, output_path='../data/models/', mlf_tracking=False):
     """
     This function's main purpose is the comparison between validation and testing in order to tune the model during calibration.
     It performs training, validation and testing of one or more models on one or more credit events, requiring as inputs:
@@ -119,7 +122,10 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
     - the prefix for each of them (list)
     - the postfixes for each of them (list)
     - traindata and testdata name are default
+    - dictionary with the scoring methods for cross validation
     - number of folds for cross validation phase
+    - option to save the model, give it an output path and model name
+    - option of tracking the experiments in mlflow
 
     It returns a dictionary containing the results from validation and testing phase, useful to be plugged in the plot_rocs function
     to visualize AUCs.
@@ -167,7 +173,7 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
 
             #validation performance
             print('- Validation...')
-            model_kfold = model_diag(model, X_train, y_train, run_confusion_matrix=True, CrossValFolds=CrossValFolds)
+            model_kfold = model_diag(model, X_train, y_train, CrossValFolds=CrossValFolds, scoring=scoring)
             results[modeltype+'_'+prefix+'validation'] = model_kfold
 
             #testing on out of sample observations
@@ -178,21 +184,12 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
             #saving the model
             if save_model:
                 print('- Saving the model to {}...'.format(output_path))
-                filename, filepath = save_sk_model(model, output_path, model_name, prefix)
+                filename, filepath = save_sk_model(model, output_path, modeltype, prefix)
 
             if mlf_tracking:
                 with mlflow.start_run():
 
                     print("Tracking the experiment on mlflow...")
-
-                    #tpr_kf = model_kfold['tpr']
-                    #fpr_kf = model_kfold['fpr']
-                    auc_kf = model_kfold['auc']
-
-                    #tpr = model_oos['tpr']
-                    #fpr = model_oos['fpr']
-                    auc = model_oos['auc']
-
 
                     #experiment type tracking
                     mlflow.log_param("experiment_type", prefix)
@@ -220,17 +217,18 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
                         mlflow.log_param(par_name, hpar[par_name])
 
                     #kfold validation metrics tracking
+                    auc_kf_general = round(model_kfold['auc'],3)
+      
                     mlflow.log_metric("validation_nfolds", CrossValFolds)
-                    mlflow.log_metric("validation_auc", auc_kf)
-                    #mlflow.log_metric("validation_tpr", tpr_kf)
-                    #mlflow.log_metric("validation_fpr", fpr_kf)
+                    mlflow.log_metric("val_auc", auc_kf_general)
 
+                    for fold in range(1,CrossValFolds+1):
+                        auc_kf_fold = round(model_kfold['AUC_fold_'+str(fold)],3)
+                        mlflow.log_metric("val_auc_fold_"+str(fold), auc_kf_fold)
 
                     #test metrics tracking
+                    auc = model_oos['auc']
                     mlflow.log_metric("test_auc", auc)
-                    #mlflow.log_metric("test_tpr", tpr)
-                    #mlflow.log_metric("test_fpr", fpr)
-
                     mlflow.sklearn.log_model(model, "model")
 
             print()
@@ -239,7 +237,7 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
 
 
 def main():
-    print("models_utils.py executed..")
+    print("models_utils.py executed/loaded..")
 
 if __name__ == "__main__":
     main()
