@@ -217,7 +217,7 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
             if save_results_for_viz:
                 dict_name = save_dictionary(results, viz_output_path+experiment_name+'/', filename.split('.')[0],'_viz')
 
-            if mlf_tracking:
+            if mlf_tracking: #mlflow tracking
 
                 #checking the name of existing experiments
                 expnames = set([exp.name for exp in mlflow.tracking.MlflowClient().list_experiments()])
@@ -272,7 +272,13 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
 
                     #test metrics tracking
                     auc = round(model_oos['auc'],3)
+                    cm = model_oos['rcm']
+
                     mlflow.log_metric("test_auc", auc)
+                    mlflow.log_metirc("test_tpr", round(cm[0,0],2)) #true positive rate
+                    mlflow.log_metirc("test_fpr", round(cm[0,1],2)) #false positive rate
+                    mlflow.log_metirc("test_fnr", round(cm[1,0],2)) #false negative ratee
+                    mlflow.log_metirc("test_tnr", round(cm[1,1],2)) #true negative rate
 
                     #storing the model file as pickle
                     mlflow.sklearn.log_model(model, "model")
@@ -281,9 +287,7 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
                     mlflow.log_artifact(trainfiles, "train_file")
                     mlflow.log_artifact(testfiles, "test_file")
                     mlflow.log_artifact(dict_name, "results_dict_for_viz")
-
             print()
-
     return results
 
 
