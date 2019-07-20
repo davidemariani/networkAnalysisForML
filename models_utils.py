@@ -15,6 +15,7 @@ import pandas as pd
 import numpy as np
 import pickle
 import datetime 
+import os
 
 from sklearn.model_selection import cross_val_predict, cross_validate
 from sklearn.metrics import precision_recall_curve, roc_curve, roc_auc_score, confusion_matrix
@@ -41,7 +42,8 @@ def cm_ratio(cm):
 
 def model_diag(model, X_train, y_train, CrossValFolds=5, scoring = {'AUC':'roc_auc'}):
     """
-    This function returns as output false positive rate, true positive rate and auc score in the form of a dictionary.
+    This function returns as output false positive rates, true positive rates and auc score for stratified kfold and each
+    cross validation forlds in the form of a dictionary.
     It needs model, training x and training y as inputs.
     """
     
@@ -105,15 +107,38 @@ def save_sk_model(model, datafolder, model_name, prefix):
 
     filepath = datafolder+filename
 
-    print("Saving model to {}".format(datafolder+filepath))
+    # Create target folder if it doesn't exist
+    if not os.path.exists(datafolder):
+        os.mkdir(datafolder)
+
+    print("Saving model to {}".format(filepath))
     with open(filepath, "wb") as pickle_file:
             pickle.dump(model, pickle_file)
 
     return (filename, filepath)
 
 
+def save_dictionary(dict, datafolder, dict_name, postfix):
+    """
+    This function saves a dictionary to a pickle file
+    """
+    filepath = datafolder+dict_name+postfix+'.pkl'
+
+    # Create target folder if it doesn't exist
+    if not os.path.exists(datafolder):
+        os.mkdir(datafolder)
+
+    print("Saving dictionary to {}".format(filepath))
+    with open(filepath, "wb") as pickle_file:
+            pickle.dump(dict, pickle_file)
+    return filepath
+
+
+
+
 def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata', testfile='_testdata', scoring = {'AUC':'roc_auc'},
-                CrossValFolds=5, save_model=False, output_path='../data/models/', mlf_tracking=False):
+                CrossValFolds=5, save_model=False, models_path='../data/models/', mlf_tracking=False, experiment_name='experiment',
+                save_results_for_viz=False, viz_output_path='../data/viz_data/'):
     """
     This function's main purpose is the comparison between validation and testing in order to tune the model during calibration.
     It performs training, validation and testing of one or more models on one or more credit events, requiring as inputs:
@@ -125,6 +150,7 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
     - dictionary with the scoring methods for cross validation
     - number of folds for cross validation phase
     - option to save the model, give it an output path and model name
+    - option to save AUC visualization data as pickles in specific folder
     - option of tracking the experiments in mlflow
 
     It returns a dictionary containing the results from validation and testing phase, useful to be plugged in the plot_rocs function
@@ -183,13 +209,31 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
 
             #saving the model
             if save_model:
+                output_path = models_path+experiment_name+'/'
                 print('- Saving the model to {}...'.format(output_path))
                 filename, filepath = save_sk_model(model, output_path, modeltype, prefix)
 
-            if mlf_tracking:
-                with mlflow.start_run():
+            #saving results dictionary for viz
+            if save_results_for_viz:
+                dict_name = save_dictionary(results, viz_output_path+experiment_name+'/', filename.split('.')[0],'_viz')
 
-                    print("Tracking the experiment on mlflow...")
+            if mlf_tracking:
+
+                #checking the name of existing experiments
+                expnames = set([exp.name for exp in mlflow.tracking.MlflowClient().list_experiments()])
+
+                #creating a new experiment if its name is not among the existing ones
+                if experiment_name not in expnames:
+                    print("- Creating the new experiment '{}',  the following results will be saved in it...".format(experiment_name))
+                    exp_id = mlflow.create_experiment(experiment_name)
+                else: #adding new results to the existing one otherwise
+                    print("- Activating existing experiment '{}', the following results will be saved in it...".format(experiment_name))
+                    mlflow.set_experiment(experiment_name)
+                    exp_id = mlflow.tracking.MlflowClient().get_experiment_by_name(experiment_name).experiment_id
+
+                with mlflow.start_run(experiment_id=exp_id): #create and initialize experiment
+
+                    print("- Tracking the experiment on mlflow...")
 
                     #experiment type tracking
                     mlflow.log_param("experiment_type", prefix)
@@ -229,7 +273,14 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
                     #test metrics tracking
                     auc = model_oos['auc']
                     mlflow.log_metric("test_auc", auc)
+
+                    #storing the model file as pickle
                     mlflow.sklearn.log_model(model, "model")
+
+                    #storing pipeline-processed trainset and testset
+                    mlflow.log_artifact(trainfiles, "train_file")
+                    mlflow.log_artifact(testfiles, "test_file")
+                    mlflow.log_artifact(dict_name, "results_dict_for_viz")
 
             print()
 
