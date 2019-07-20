@@ -275,10 +275,10 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
                     cm = model_oos['rcm']
 
                     mlflow.log_metric("test_auc", auc)
-                    mlflow.log_metirc("test_tpr", round(cm[0,0],2)) #true positive rate
-                    mlflow.log_metirc("test_fpr", round(cm[0,1],2)) #false positive rate
-                    mlflow.log_metirc("test_fnr", round(cm[1,0],2)) #false negative ratee
-                    mlflow.log_metirc("test_tnr", round(cm[1,1],2)) #true negative rate
+                    mlflow.log_metric("test_tpr", round(cm[0,0],4)) #true positive rate
+                    mlflow.log_metric("test_fpr", round(cm[0,1],4)) #false positive rate
+                    mlflow.log_metric("test_fnr", round(cm[1,0],4)) #false negative ratee
+                    mlflow.log_metric("test_tnr", round(cm[1,1],4)) #true negative rate
 
                     #storing the model file as pickle
                     mlflow.sklearn.log_model(model, "model")
