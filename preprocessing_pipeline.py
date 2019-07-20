@@ -21,6 +21,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn_pandas import DataFrameMapper, gen_features
 import itertools
 import sys
+import os
 
 
 #utils
@@ -248,8 +249,8 @@ def save_preproc_files(outputfolder, prefix, preproc_pipeline, y_train, X_train,
 
 
 
-def preprocessing_pipeline(df, feat_str, feat_quant, feat_exp, feat_date, target_feature, testset_control_feature, timewise = False,  
-                           trainsize=None, testsize=None, testdate=None, save_to_file=False, outputfolder='', prefix=''):
+def preprocessing_pipeline(df, feat_str, feat_quant, feat_exp, feat_date, target_feature, testset_control_feature, experimentname, timewise = False,  
+                           trainsize=None, testsize=None, testdate=None, save_to_file=False, outputpath="../data/", prefix=''):
     """
     This function execute the whole preprocessing pipeline on a given dataframe, allowing the choice between timewise splitting and 
     shuffle splitting of the dataset between train and test with the boolean parameter 'timewise'.
@@ -269,6 +270,12 @@ def preprocessing_pipeline(df, feat_str, feat_quant, feat_exp, feat_date, target
     y_train, X_train, y_test, X_test, feature_labels = transform_train_test(train_all, test_all, preproc_pipeline, target_feature)
 
     if save_to_file:
+        outputfolder = outputpath+experimentname+'/'
+
+        # Create target folder if it doesn't exist
+        if not os.path.exists(outputfolder):
+            os.mkdir(outputfolder)
+
         save_preproc_files(outputfolder, prefix1+prefix, preproc_pipeline, y_train, X_train, y_test, X_test, feature_labels)
 
     return y_train, X_train, y_test, X_test, feature_labels

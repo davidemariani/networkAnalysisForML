@@ -230,8 +230,8 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
                     print("- Activating existing experiment '{}', the following results will be saved in it...".format(experiment_name))
                     mlflow.set_experiment(experiment_name)
                     exp_id = mlflow.tracking.MlflowClient().get_experiment_by_name(experiment_name).experiment_id
-
-                with mlflow.start_run(experiment_id=exp_id): #create and initialize experiment
+               
+                with mlflow.start_run(experiment_id=exp_id, run_name=prefix + modeltype): #create and initialize experiment
 
                     print("- Tracking the experiment on mlflow...")
 
