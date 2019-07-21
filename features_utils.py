@@ -210,7 +210,8 @@ def add_node_stats(inst, igroup, idx, id, ii, prefix, decision_date_col="value_d
         
     #adding counter of previously repaid instruments in this customer/debtor pair
     #to be repaid, the last payment date needs to be smaller than all the instrument date and the instrument needs to not be open
-    repaid = (igroup.loc[:, prefix_read+"last_payment_date"] < ii[decision_date_col]) & (~ igroup.loc[:, prefix_read+"is_open"]) #filter for repaid instruments in this customer/debtor pair
+    #filter for repaid instruments in this customer/debtor pair
+    repaid = (igroup.loc[:, prefix_read+"last_payment_date"] < ii[decision_date_col]) & (~ igroup.loc[:, prefix_read+"is_open"]) 
     inst.loc[id, prefix_read+prefix+"repaid_c"] = sum(repaid) 
     
     #adding counter of previously impaired in this customer/debtor pair
