@@ -258,7 +258,7 @@ def preprocessing_pipeline(df, feat_str, feat_quant, feat_exp, feat_date, target
     """
     preproc_pipeline = features_pipeline(feat_str, feat_quant, feat_exp, feat_date)
 
-    prefix1 = ''
+    prefix1 = '' #placeholder for dynamic prefix
 
     if timewise:
         prefix1 = 'time_'+str(testdate).split(' ')[0]+'_'
