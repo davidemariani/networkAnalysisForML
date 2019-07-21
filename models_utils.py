@@ -177,7 +177,6 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
         for loop in range(len(models)):
             #selecting model and transformed train and test sets
             model = models[loop]
-            postfix = postfixes[loop]
 
             modeltype = str(model).split('(')[0]
 
