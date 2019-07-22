@@ -4,7 +4,7 @@
 # Programme    : Msc Data Science                                                  #
 # Script Name  : models_utils.py                                                   #
 # Description  : utils for modelling implementation and prototipation              #
-# Version      : 0.1                                                               #
+# Version      : 0.9                                                               #
 #==================================================================================#
 # This file contains functions do implement and prototype ML models using          #
 # scikit learn and tensorflow                                                      #
