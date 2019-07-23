@@ -32,16 +32,16 @@ import mlflow.keras
 class TerminateOnBaseline(Callback):
     """Callback that terminates training when either acc or val_acc reaches a specified baseline
     """
-    def __init__(self, monitor='acc', baseline=0.9):
+    def __init__(self, monitor, baseline):
         super(TerminateOnBaseline, self).__init__()
         self.monitor = monitor
         self.baseline = baseline
 
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
-        acc = logs.get(self.monitor)
-        if acc is not None:
-            if acc >= self.baseline:
+        metric = logs.get(self.monitor)
+        if metric is not None:
+            if metric >= self.baseline:
                 print('Epoch %d: Reached baseline, terminating training' % (epoch))
                 self.model.stop_training = True
 
@@ -56,7 +56,6 @@ def create_mlp_model(input_shape = 16,
                      optimizer = tf.keras.optimizers.RMSprop(learning_rate=1e-4),
                      loss_func = 'binary_crossentropy',
                      metrics = ['accuracy', tf.keras.metrics.Precision(), tf.keras.metrics.Recall()],
-                     activity_regularizer = l1(0.001),
                     print_summary=True):
     
     """
@@ -71,13 +70,13 @@ def create_mlp_model(input_shape = 16,
     
     
     input_layer = [tf.keras.layers.Dense(hidden_nodes[0], input_shape=[input_shape], activation=hl_activations[0], 
-                                        kernel_initializer=weights_init, bias_initializer=bias_init,
-                                        activity_regularizer = activity_regularizer)] #[tf.keras.layers.Flatten(input_shape=[X_train.shape[1]])]
+                                        kernel_initializer=weights_init, bias_initializer=bias_init)] #[tf.keras.layers.Flatten(input_shape=[X_train.shape[1]])]
     
     hidden_layers = []
     
     for i in range(1,hidden_layers_no):
-        hidden_layers.append(tf.keras.layers.Dense(hidden_nodes[i], activation=hl_activations[i]))
+        hidden_layers.append(tf.keras.layers.Dense(hidden_nodes[i], 
+                                                   activation=hl_activations[i]))
     
     output_layer = [tf.keras.layers.Dense(1, activation=output_function)]
     
