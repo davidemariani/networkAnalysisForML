@@ -20,7 +20,7 @@ import os
 #importing TensorFlow
 import tensorflow as tf
 from tensorflow.keras.wrappers.scikit_learn import KerasClassifier
-from tensorflow.keras.regularizers import l1
+from tensorflow.keras.regularizers import l1, l2
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 from tensorflow.keras.callbacks import Callback
@@ -56,6 +56,8 @@ def create_mlp_model(input_shape = 16,
                      optimizer = tf.keras.optimizers.RMSprop(learning_rate=1e-4),
                      loss_func = 'binary_crossentropy',
                      metrics = ['accuracy', tf.keras.metrics.Precision(), tf.keras.metrics.Recall()],
+                     kernel_regularizers = [],
+                     dropout = None,
                     print_summary=True):
     
     """
@@ -75,8 +77,17 @@ def create_mlp_model(input_shape = 16,
     hidden_layers = []
     
     for i in range(1,hidden_layers_no):
-        hidden_layers.append(tf.keras.layers.Dense(hidden_nodes[i], 
-                                                   activation=hl_activations[i]))
+            if len(kernel_regularizers)==0:
+                hidden_layers.append(tf.keras.layers.Dense(hidden_nodes[i], 
+                                                           activation=hl_activations[i]))
+                if dropout!=None:
+                    hidden_layers.append(tf.keras.layers.Dropout(dropout[i]))
+            else:
+                hidden_layers.append(tf.keras.layers.Dense(hidden_nodes[i], 
+                                                           activation=hl_activations[i],
+                                                           kernel_regularizer=kernel_regularizers[i]))
+                if dropout!=None:
+                    hidden_layers.append(tf.keras.layers.Dropout(dropout[i]))
     
     output_layer = [tf.keras.layers.Dense(1, activation=output_function)]
     
