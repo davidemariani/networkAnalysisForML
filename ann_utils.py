@@ -108,7 +108,7 @@ def create_mlp_model(input_shape = 16,
 
 
 
-#def experiment(model, )
+#def experiment(model, X_train, y_train, X_test, y_test,)
 
 def main():
     print("ann_utils.py executed/loaded..")
