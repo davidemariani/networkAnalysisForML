@@ -72,11 +72,15 @@ def create_mlp_model(input_shape = 16,
     
     
     input_layer = [tf.keras.layers.Dense(hidden_nodes[0], input_shape=[input_shape], activation=hl_activations[0], 
-                                        kernel_initializer=weights_init, bias_initializer=bias_init)] #[tf.keras.layers.Flatten(input_shape=[X_train.shape[1]])]
+                                        kernel_initializer=weights_init, bias_initializer=bias_init)] 
+
+    if dropout:
+        input_layer.append(tf.keras.layers.Dropout(dropout[0]))
+
     
     hidden_layers = []
     
-    for i in range(1,hidden_layers_no):
+    for i in range(1,hidden_layers_no): #operations on hidden layers (dropout or other regularization addition)
             if len(kernel_regularizers)==0:
                 hidden_layers.append(tf.keras.layers.Dense(hidden_nodes[i], 
                                                            activation=hl_activations[i]))
@@ -101,6 +105,10 @@ def create_mlp_model(input_shape = 16,
               metrics=metrics)
     
     return model
+
+
+
+#def experiment(model, )
 
 def main():
     print("ann_utils.py executed/loaded..")
