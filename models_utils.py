@@ -159,9 +159,6 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
     It also allow results and hyperparameters tracking in MLflow setting mlf_tracking to True. 
     """
 
-    #results storage dictionary
-    results = {}
-
     #check that the lists have consistent length
     if len(prefixes) == len(postfixes):
         pass
@@ -175,10 +172,17 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
         postfix = postfixes[p]
 
         for loop in range(len(models)):
+
+            #results storage dictionary
+            results = {'experiment':experiment_name,
+                       'prefix':prefix,
+                       'postfix':postfix}
+
             #selecting model and transformed train and test sets
             model = models[loop]
 
             modeltype = str(model).split('(')[0]
+            results = {'model':modeltype}
 
             print("Training, validation and testing of experiment with prefix {} and postfix {} using {}".format(prefix, postfix, modeltype))
 
@@ -199,12 +203,12 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
             #validation performance
             print('- Validation...')
             model_kfold = model_diag(model, X_train, y_train, CrossValFolds=CrossValFolds, scoring=scoring)
-            results[modeltype+'_'+prefix+'validation'] = model_kfold
+            results['validation'] = model_kfold
 
             #testing on out of sample observations
             print('- Testing...')
             model_oos = model_oostest(model, X_test, y_test)
-            results[modeltype+'_'+prefix+'testing'] = model_oos
+            results['testing'] = model_oos
 
             #saving the model
             if save_model:
