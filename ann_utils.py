@@ -21,6 +21,7 @@ import os
 import tensorflow as tf
 from tensorflow.keras.wrappers.scikit_learn import KerasClassifier
 from tensorflow.keras.regularizers import l1, l2
+from tensorflow.keras.optimizers import RMSprop, Adam
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 from tensorflow.keras.callbacks import Callback
@@ -108,7 +109,67 @@ def create_mlp_model(input_shape = 16,
 
 
 
-#def experiment(model, X_train, y_train, X_test, y_test,)
+def experiment(X_train, y_train, X_test, y_test,
+               input_shape,
+               hidden_layers_no,
+               hidden_nodes,
+               hl_activations,
+               optimizer,
+               loss_func,
+               metrics,
+               dropout,
+               to_monitor,
+               early_stopping,
+               batch_size,
+               epochs,
+               class_1_weight,
+               validation_size,
+               pred_threshold = 0.55
+               kernel_regularizers=[]):
+
+    #create mlp
+    mlp = create_mlp_model(input_shape=input_shape, 
+                       hidden_layers_no=hidden_layers_no,
+                       hidden_nodes=hidden_nodes, 
+                       hl_activations=hl_activations,                                        
+                       optimizer = optimizer,
+                       loss_func=loss_func,
+                      kernel_regularizers = kernel_regularizers,
+                       dropout = dropout,
+                      metrics = metrics)
+
+    #fitting
+    X_val = X_train[:validation_size]
+    partial_X_train = X_train[validation_size:]
+    y_val = y_train[:validation_size]
+    partial_y_train = y_train[validation_size:]
+
+    history = mlp.fit(partial_X_train, partial_y_train, epochs=epochs,  batch_size = batch_size, verbose=1, 
+            steps_per_epoch=math.ceil(X_train.shape[0]/batch_size), callbacks=[early_stopping],
+                     validation_data=(X_val, y_val), class_weight={0:1, 1:class_1_weight}, 
+                      shuffle=False)
+
+    #epochs history data to store
+    history_dict = history.history
+
+    #loss
+    loss_values = history_dict['loss']
+    val_loss_values = history_dict['val_loss']
+
+    #epochs
+    epochs = range(1, len(loss_values)+1)
+
+    #accuracy
+    acc_values = history_dict['accuracy']
+    val_acc_values = history_dict['val_accuracy']
+
+    #auc
+    aucname = 'auc'+mlp.name.split('sequential')[-1]
+    auc_values = history_dict[aucname]
+    val_auc_values = history_dict['val_'+aucname]
+
+    #predictions on test-set
+    pass
 
 def main():
     print("ann_utils.py executed/loaded..")
