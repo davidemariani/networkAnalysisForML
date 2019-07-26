@@ -124,7 +124,7 @@ def experiment(X_train, y_train, X_test, y_test,
                epochs,
                class_1_weight,
                validation_size,
-               pred_threshold = 0.55
+               pred_threshold = 0.55,
                kernel_regularizers=[]):
 
     #create mlp
