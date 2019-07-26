@@ -85,7 +85,7 @@ def model_oostest(model, X_test, y_test):
 
     print("AUC {:.3f}".format(auc))
 
-    return {'fpr':fpr, 'tpr':tpr, 'auc':auc, 'rcm':rcm}
+    return {'fpr':fpr, 'tpr':tpr, 'auc':auc, 'rcm':rcm, 'cm':cm}
 
 
 
@@ -271,13 +271,23 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
 
                     #test metrics tracking
                     auc = round(model_oos['auc'],3)
-                    cm = model_oos['rcm']
+                    rcm = model_oos['rcm']
+
+                    tnr, fpr, fnr, tpr = rcm.ravel()
 
                     mlflow.log_metric("test_auc", auc)
-                    mlflow.log_metric("test_tpr", round(cm[0,0],4)) #true positive rate
-                    mlflow.log_metric("test_fpr", round(cm[0,1],4)) #false positive rate
-                    mlflow.log_metric("test_fnr", round(cm[1,0],4)) #false negative ratee
-                    mlflow.log_metric("test_tnr", round(cm[1,1],4)) #true negative rate
+                    mlflow.log_metric("test_tpr", round(tpr,4)) #true positive rate
+                    mlflow.log_metric("test_fpr", round(fpr,4)) #false positive rate
+                    mlflow.log_metric("test_fnr", round(fnr,4)) #false negative ratee
+                    mlflow.log_metric("test_tnr", round(tnr,4)) #true negative rate
+
+                    cm = model_oos['cm']
+                    tn, fp, fn, tp = cm.ravel()
+                    mlflow.log_metric("test_tp", tp) #true positive rate
+                    mlflow.log_metric("test_fp", fp) #false positive rate
+                    mlflow.log_metric("test_fn", fn) #false negative ratee
+                    mlflow.log_metric("test_tn", tn) #true negative rate
+
 
                     #storing the model file as pickle
                     mlflow.sklearn.log_model(model, "model")
