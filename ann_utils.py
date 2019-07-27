@@ -16,6 +16,11 @@ import numpy as np
 import pickle
 import datetime 
 import os
+import matplotlib.pyplot as plt
+import math
+
+from sklearn.metrics import roc_curve, roc_auc_score, confusion_matrix
+from models_utils import *
 
 #importing TensorFlow
 import tensorflow as tf
@@ -58,6 +63,8 @@ def create_mlp_model(input_shape = 16,
                      loss_func = 'binary_crossentropy',
                      metrics = ['accuracy', tf.keras.metrics.Precision(), tf.keras.metrics.Recall()],
                      kernel_regularizers = [],
+                     kernel_initializer = tf.keras.initializers.lecun_uniform(seed=42),
+                     bias_initializer = tf.keras.initializers.Zeros(),
                      dropout = None,
                     print_summary=True):
     
@@ -67,13 +74,11 @@ def create_mlp_model(input_shape = 16,
     activation function for each hidden layer (list of activation functions), random seed, output function (activation function), 
     optimizer (training optimizer function), loss function, metrics to monitor, regularizer, option to print the summary of architecture
     """
-    
-    weights_init = tf.keras.initializers.glorot_normal(seed=42)  
-    bias_init = tf.keras.initializers.Zeros()
+   
     
     
     input_layer = [tf.keras.layers.Dense(hidden_nodes[0], input_shape=[input_shape], activation=hl_activations[0], 
-                                        kernel_initializer=weights_init, bias_initializer=bias_init)] 
+                                        kernel_initializer=kernel_initializer, bias_initializer=bias_initializer)] 
 
     if dropout:
         input_layer.append(tf.keras.layers.Dropout(dropout[0]))
@@ -108,24 +113,91 @@ def create_mlp_model(input_shape = 16,
     return model
 
 
+def plot_epochs_graph(history_dict, metric):
+    """
+    This function takes as inputs a dictionary containing mpl history data
+    and the name of the metric to monitor, and plot a graph using matplotlib 
+    for model diagnostics
+    """
+    values = history_dict[metric]
+    val_values = history_dict['val_'+metric]
+    epochs = range(1, len(val_values)+1)
 
-def experiment(X_train, y_train, X_test, y_test,
-               input_shape,
-               hidden_layers_no,
-               hidden_nodes,
-               hl_activations,
-               optimizer,
-               loss_func,
-               metrics,
-               dropout,
-               to_monitor,
-               early_stopping,
-               batch_size,
-               epochs,
-               class_1_weight,
-               validation_size,
+    plt.plot(epochs, values, 'bo', label='Train {:}'.format(metric))
+    plt.plot(epochs, val_values, 'b', label='Validation {:}'.format(metric))
+    plt.title("Training and validation {:}".format(metric))
+    plt.xlabel("Epochs")
+    plt.ylabel(metric)
+    plt.legend()
+
+    plt.show()
+
+
+def save_tf_model(model, datafolder, model_name, prefix):
+    """
+    This function saves a scikit learn model in pickle format
+    """
+
+    #creating reference for output file
+    year = str(datetime.datetime.now().year)[2:]
+    month = str(datetime.datetime.now().month)
+    if len(month)==1:
+        month = '0'+month
+    day = str(datetime.datetime.now().day)
+
+    postfix = '_'+year+month+day+'_'+str(datetime.datetime.now().hour)+str(datetime.datetime.now().minute)
+
+    filename = prefix +'_'+ model_name + postfix+'.pkl'
+
+    filepath = datafolder+filename
+
+    # Create target folder if it doesn't exist
+    if not os.path.exists(datafolder):
+        os.mkdir(datafolder)
+
+    print("Saving model to {}".format(filepath))
+    mlp.save(filepath)
+ 
+    return (filename, filepath)
+
+
+
+
+
+def mlp_exp(datafolder, prefix, postfix, 
+            trainfile='_traindata', testfile='_testdata',
+               hidden_layers_no=1,
+               hidden_nodes=[5],
+               hl_activations=[tf.nn.relu],
+               optimizer=Adam(),
+               loss_func=tf.keras.losses.BinaryCrossentropy(),
+               metrics=['accuracy', tf.keras.metrics.AUC(), tf.keras.metrics.Precision(), tf.keras.metrics.Recall()],
+               dropout=[0.45],
+               to_monitor='accuracy',
+               early_stopping=False,
+               batch_size=512,
+               epochs=5,
+               class_1_weight=50,
+               validation_size=10000,
                pred_threshold = 0.55,
-               kernel_regularizers=[]):
+               kernel_regularizers=[],
+               shuffle=False,
+               save_model=False,
+               plot_diagnostics = True,
+               models_path='../data/models/', mlf_tracking=False, experiment_name='experiment',
+               save_results_for_viz=False, viz_output_path='../data/viz_data/'):
+
+    #loading preprocessed data
+    trainfiles = datafolder + prefix + trainfile + postfix+'.pkl'
+    testfiles = datafolder + prefix + testfile + postfix+'.pkl'
+
+    print("-Loading preprocessed data...")
+    print("training files: {}".format(trainfiles))
+    print("testing files: {}".format(testfiles))
+    [X_train, y_train, feature_labels] = pd.read_pickle(trainfiles) 
+    [X_test, y_test, feature_labels] = pd.read_pickle(testfiles) 
+    
+    input_shape = len(feature_labels)
 
     #create mlp
     mlp = create_mlp_model(input_shape=input_shape, 
@@ -144,32 +216,55 @@ def experiment(X_train, y_train, X_test, y_test,
     y_val = y_train[:validation_size]
     partial_y_train = y_train[validation_size:]
 
-    history = mlp.fit(partial_X_train, partial_y_train, epochs=epochs,  batch_size = batch_size, verbose=1, 
-            steps_per_epoch=math.ceil(X_train.shape[0]/batch_size), callbacks=[early_stopping],
-                     validation_data=(X_val, y_val), class_weight={0:1, 1:class_1_weight}, 
-                      shuffle=False)
+    if early_stopping:
+        history = mlp.fit(partial_X_train, partial_y_train, epochs=epochs,  batch_size = batch_size, verbose=1, 
+                steps_per_epoch=math.ceil(X_train.shape[0]/batch_size), callbacks=[early_stopping],
+                         validation_data=(X_val, y_val), class_weight={0:1, 1:class_1_weight}, 
+                          shuffle=shuffle)
+    else:
+        history = mlp.fit(partial_X_train, partial_y_train, epochs=epochs,  batch_size = batch_size, verbose=1, 
+                steps_per_epoch=math.ceil(X_train.shape[0]/batch_size),
+                         validation_data=(X_val, y_val), class_weight={0:1, 1:class_1_weight}, 
+                          shuffle=shuffle)
 
     #epochs history data to store
     history_dict = history.history
+    history_dict['experiment'] = experiment_name
+    history_dict['prefix'] = prefix
+    history_dict['postfix'] = postfix
 
-    #loss
-    loss_values = history_dict['loss']
-    val_loss_values = history_dict['val_loss']
+    if plot_diagnostics:
+        plot_epochs_graph(history_dict, 'loss')
+        plot_epochs_graph(history_dict, 'accuracy')
+        plot_epochs_graph(history_dict,  'auc') #+mlp.name.split('sequential')[-1])
 
-    #epochs
-    epochs = range(1, len(loss_values)+1)
-
-    #accuracy
-    acc_values = history_dict['accuracy']
-    val_acc_values = history_dict['val_accuracy']
-
-    #auc
-    aucname = 'auc'+mlp.name.split('sequential')[-1]
-    auc_values = history_dict[aucname]
-    val_auc_values = history_dict['val_'+aucname]
+    if save_model:
+        output_path = models_path+experiment_name+'/'
+        print('- Saving the model to {}...'.format(output_path))
+        filename, filepath = save_tf_model(model, output_path, modeltype, prefix)
+        
 
     #predictions on test-set
-    pass
+    predictions = mlp.predict(X_test)
+    preds = (predictions>pred_threshold)
+
+    #test AUC
+    print("Prediction performance on {} observations from test set".format(X_test.shape[0]))
+    fpr, tpr, thresholds = roc_curve(y_test, predictions) 
+    auc = roc_auc_score(y_test, predictions)
+    print('AUC: {}'.format(auc))
+
+    #test cm
+    print("Confusion matrix:")
+    cm = confusion_matrix(y_test, preds)
+    tn, fp, fn, tp = cm.ravel()
+    print(cm)
+
+    rcm = cm_ratio(cm)
+    tnr, fpr, fnr, tpr = rcm.ravel()
+    print(rcm)
+
+    return history_dict
 
 def main():
     print("ann_utils.py executed/loaded..")
