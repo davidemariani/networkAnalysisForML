@@ -303,7 +303,6 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
             print()
     return results
 
-
 def main():
     print("models_utils.py executed/loaded..")
 

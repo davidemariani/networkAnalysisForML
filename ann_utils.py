@@ -4,7 +4,7 @@
 # Programme    : Msc Data Science                                                  #
 # Script Name  : ann_utils.py                                                      #
 # Description  : utils for artificial neural networks implementation               #
-# Version      : 0.1                                                               #
+# Version      : 0.2                                                               #
 #==================================================================================#
 # This file contains functions do implement and prototype artificial neural        #
 # networks using tensorflow 2.0 and keras                                          #
@@ -88,18 +88,18 @@ def create_mlp_model(input_shape = 16,
     
     for i in range(1,hidden_layers_no): #operations on hidden layers (dropout or other regularization addition)
             if len(kernel_regularizers)==0:
-                hidden_layers.append(tf.keras.layers.Dense(hidden_nodes[i], 
+                hidden_layers.append(tf.keras.layers.Dense(hidden_nodes[i], kernel_initializer=kernel_initializer,
                                                            activation=hl_activations[i]))
                 if dropout!=None:
                     hidden_layers.append(tf.keras.layers.Dropout(dropout[i]))
             else:
-                hidden_layers.append(tf.keras.layers.Dense(hidden_nodes[i], 
+                hidden_layers.append(tf.keras.layers.Dense(hidden_nodes[i], kernel_initializer=kernel_initializer,
                                                            activation=hl_activations[i],
                                                            kernel_regularizer=kernel_regularizers[i]))
                 if dropout!=None:
                     hidden_layers.append(tf.keras.layers.Dropout(dropout[i]))
     
-    output_layer = [tf.keras.layers.Dense(1, activation=output_function)]
+    output_layer = [tf.keras.layers.Dense(1, activation=output_function, kernel_initializer=kernel_initializer)]
     
     model = tf.keras.Sequential(input_layer + hidden_layers + output_layer)
     
@@ -135,7 +135,7 @@ def plot_epochs_graph(history_dict, metric):
 
 def save_tf_model(model, datafolder, model_name, prefix):
     """
-    This function saves a scikit learn model in pickle format
+    This function saves a tensorflow model in h5 format
     """
 
     #creating reference for output file
@@ -147,7 +147,7 @@ def save_tf_model(model, datafolder, model_name, prefix):
 
     postfix = '_'+year+month+day+'_'+str(datetime.datetime.now().hour)+str(datetime.datetime.now().minute)
 
-    filename = prefix +'_'+ model_name + postfix+'.pkl'
+    filename = prefix +'_'+ model_name + postfix+'.h5'
 
     filepath = datafolder+filename
 
@@ -156,7 +156,7 @@ def save_tf_model(model, datafolder, model_name, prefix):
         os.mkdir(datafolder)
 
     print("Saving model to {}".format(filepath))
-    mlp.save(filepath)
+    model.save(filepath)
  
     return (filename, filepath)
 
@@ -171,9 +171,11 @@ def mlp_exp(datafolder, prefix, postfix,
                hl_activations=[tf.nn.relu],
                optimizer=Adam(),
                loss_func=tf.keras.losses.BinaryCrossentropy(),
+               kernel_initializer = tf.keras.initializers.lecun_uniform(seed=42),
+               bias_initializer = tf.keras.initializers.Zeros(),
                metrics=['accuracy', tf.keras.metrics.AUC(), tf.keras.metrics.Precision(), tf.keras.metrics.Recall()],
                dropout=[0.45],
-               to_monitor='accuracy',
+               to_monitor=('accuracy', 0.9),
                early_stopping=False,
                batch_size=512,
                epochs=5,
@@ -182,6 +184,7 @@ def mlp_exp(datafolder, prefix, postfix,
                pred_threshold = 0.55,
                kernel_regularizers=[],
                shuffle=False,
+               use_batch_and_steps=False,
                save_model=False,
                plot_diagnostics = True,
                models_path='../data/models/', mlf_tracking=False, experiment_name='experiment',
@@ -207,25 +210,49 @@ def mlp_exp(datafolder, prefix, postfix,
                        optimizer = optimizer,
                        loss_func=loss_func,
                       kernel_regularizers = kernel_regularizers,
+                      kernel_initializer = kernel_initializer,
+                      bias_initializer = bias_initializer,
                        dropout = dropout,
                       metrics = metrics)
 
-    #fitting
-    X_val = X_train[:validation_size]
-    partial_X_train = X_train[validation_size:]
-    y_val = y_train[:validation_size]
-    partial_y_train = y_train[validation_size:]
+    modeltype = mlp.get_config()['name']
 
-    if early_stopping:
-        history = mlp.fit(partial_X_train, partial_y_train, epochs=epochs,  batch_size = batch_size, verbose=1, 
-                steps_per_epoch=math.ceil(X_train.shape[0]/batch_size), callbacks=[early_stopping],
+    #taking validation dataset from the training dataset
+    midpoint = X_train.shape[0]//2 #in order to have meaningful data for validation, val data are taken from the midpoint of the training set (data are sorted by time and not shuffled)
+    X_val = X_train[midpoint-validation_size//2:midpoint+validation_size//2]
+    partial_X_train = np.array(list(X_train[:midpoint-validation_size//2])+list(X_train[midpoint+validation_size//2:]))
+    y_val = y_train[midpoint-validation_size//2:midpoint+validation_size//2]
+    partial_y_train = np.array(list(y_train[:midpoint-validation_size//2])+list(y_train[midpoint+validation_size//2:]))
+
+    #fitting
+    if early_stopping: #including early stopping callback
+
+        print("Early stopping active: training will be stopped when {0} overcomes the value {1}".format(to_monitor[0], to_monitor[1]))
+
+        es_callback = TerminateOnBaseline(to_monitor[0], to_monitor[1])
+
+        if use_batch_and_steps: #case where both steps per epochs and batch size are used
+            history = mlp.fit(partial_X_train, partial_y_train, epochs=epochs,  batch_size = batch_size, verbose=1, 
+                callbacks=[es_callback], steps_per_epoch = math.ceil(X_train.shape[0]/batch_size),
                          validation_data=(X_val, y_val), class_weight={0:1, 1:class_1_weight}, 
                           shuffle=shuffle)
-    else:
-        history = mlp.fit(partial_X_train, partial_y_train, epochs=epochs,  batch_size = batch_size, verbose=1, 
-                steps_per_epoch=math.ceil(X_train.shape[0]/batch_size),
+        else:
+            history = mlp.fit(partial_X_train, partial_y_train, epochs=epochs,  batch_size = batch_size, verbose=1, 
+                callbacks=[es_callback],  
                          validation_data=(X_val, y_val), class_weight={0:1, 1:class_1_weight}, 
                           shuffle=shuffle)
+
+    else: #case without early stopping callback
+        if use_batch_and_steps: #case where both steps per epochs and batch size are used
+            history = mlp.fit(partial_X_train, partial_y_train, epochs=epochs,  batch_size = batch_size, verbose=1, 
+                             steps_per_epoch = math.ceil(X_train.shape[0]/batch_size),
+                             validation_data=(X_val, y_val), class_weight={0:1, 1:class_1_weight}, 
+                              shuffle=shuffle)
+        else:
+            history = mlp.fit(partial_X_train, partial_y_train, epochs=epochs,  batch_size = batch_size, verbose=1, 
+                             validation_data=(X_val, y_val), class_weight={0:1, 1:class_1_weight}, 
+                              shuffle=shuffle)
+
 
     #epochs history data to store
     history_dict = history.history
@@ -236,13 +263,23 @@ def mlp_exp(datafolder, prefix, postfix,
     if plot_diagnostics:
         plot_epochs_graph(history_dict, 'loss')
         plot_epochs_graph(history_dict, 'accuracy')
-        plot_epochs_graph(history_dict,  'auc') #+mlp.name.split('sequential')[-1])
+        plot_epochs_graph(history_dict,  'auc') 
 
     if save_model:
         output_path = models_path+experiment_name+'/'
         print('- Saving the model to {}...'.format(output_path))
-        filename, filepath = save_tf_model(model, output_path, modeltype, prefix)
+        filename, filepath = save_tf_model(mlp, output_path, modeltype, prefix)
         
+    #predictions on validation-set
+    predictions_val = mlp.predict(X_val)
+
+    #validation AUC
+    print("Prediction performance on {} observations from validation set using holdout".format(X_val.shape[0]))
+    vfpr, vtpr, vthresholds = roc_curve(y_val, predictions_val) 
+    vauc = roc_auc_score(y_val, predictions_val)
+    print('AUC: {}'.format(vauc))
+
+    history_dict['validation_results'] = {'fpr':vfpr, 'tpr':vtpr, 'auc':vauc}
 
     #predictions on test-set
     predictions = mlp.predict(X_test)
@@ -254,6 +291,8 @@ def mlp_exp(datafolder, prefix, postfix,
     auc = roc_auc_score(y_test, predictions)
     print('AUC: {}'.format(auc))
 
+    history_dict['test_results'] = {'fpr':fpr, 'tpr':tpr, 'auc':auc}
+
     #test cm
     print("Confusion matrix:")
     cm = confusion_matrix(y_test, preds)
@@ -263,6 +302,9 @@ def mlp_exp(datafolder, prefix, postfix,
     rcm = cm_ratio(cm)
     tnr, fpr, fnr, tpr = rcm.ravel()
     print(rcm)
+
+    history_dict['test_confusion_matrix'] = {'tn':tn, 'fp':fp, 'fn':fn, 'tp':tp,
+                                             'tnr':tnr, 'fpr':fpr, 'fnr':fnr, 'tpr':tpr}
 
     return history_dict
 
