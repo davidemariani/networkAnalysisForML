@@ -120,6 +120,7 @@ def plot_epochs_graph(history_dict, metric):
     and the name of the metric to monitor, and plot a graph using matplotlib 
     for model diagnostics
     """
+
     values = history_dict[metric]
     val_values = history_dict['val_'+metric]
     epochs = range(1, len(val_values)+1)
@@ -271,7 +272,13 @@ def mlp_exp(datafolder, prefix, postfix,
     if plot_diagnostics:
         plot_epochs_graph(history_dict, 'loss')
         plot_epochs_graph(history_dict, 'accuracy')
-        plot_epochs_graph(history_dict,  'auc'+mlp.name.split('sequential')[-1]) #name extension to match variable auc names
+        try: #handling some inconsistency in naming the metrics during training
+            plot_epochs_graph(history_dict,  'auc') 
+        except KeyError:
+            if mlp.name.split('sequential')[-1]!='': 
+                plot_epochs_graph(history_dict,  'auc'+mlp.name.split('sequential')[-1]) #name extension to match variable auc names
+            else:
+                plot_epochs_graph(history_dict,  'auc_1')
 
     if save_model:
         output_path = models_path+experiment_name+'/'
