@@ -301,13 +301,14 @@ def mlp_oostest(model, X_test, y_test, pred_thr):
     """
 
     #cm
-    y_score = model.predict(X_test)>pred_thr
+    y_score_prob = model.predict(X_test)
+    y_score = y_score_prob>pred_thr
     cm = confusion_matrix(y_test, y_score)
     rcm = cm_ratio(cm)
 
     #metrics
-    fpr, tpr, thresholds = roc_curve(y_test, y_score)
-    auc = roc_auc_score(y_test, y_score)
+    fpr, tpr, thresholds = roc_curve(y_test, y_score_prob)
+    auc = roc_auc_score(y_test, y_score_prob)
 
     print("AUC {:.3f}".format(auc))
 
