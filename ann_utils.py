@@ -222,7 +222,7 @@ def tr_time(training_start, training_end):
         time_message = "Training completed in {} mins and {} secs".format(mins, secs)
         print(time_message)
 
-    return time_message
+    return training_time, time_message
 
 
 
@@ -291,7 +291,7 @@ def mlp_training(mlp, X_train, y_train, epochs=50, batch_size=512, use_batch_and
                                     class_weight={0:1, 1:class_1_weight}, 
                                     shuffle=shuffle)
     if validation_ep:
-        return history, X_val, y_val
+        return history, partial_X_train, partial_y_train, X_val, y_val
     else:
         return history
 
@@ -409,7 +409,7 @@ def mlp_exp(datafolder, prefix, postfix,
 
     #training
     if validation_ep: #if a validation split is done, X_val and y_val are returned for last evaluations on validation set before testing
-        history, X_val, y_val = mlp_training(mlp, X_train, y_train, epochs=epochs, batch_size=batch_size, use_batch_and_steps=use_batch_and_steps, class_1_weight=class_1_weight, shuffle=shuffle,
+        history, partial_X_train, partial_y_train, X_val, y_val = mlp_training(mlp, X_train, y_train, epochs=epochs, batch_size=batch_size, use_batch_and_steps=use_batch_and_steps, class_1_weight=class_1_weight, shuffle=shuffle,
                     validation_ep=validation_ep, validation_size=validation_size, validation_mode=validation_mode, early_stopping=early_stopping, to_monitor=to_monitor)
     else:
         history = mlp_training(mlp, X_train, y_train, epochs=epochs, batch_size=batch_size, use_batch_and_steps=use_batch_and_steps, class_1_weight=class_1_weight, shuffle=shuffle,
@@ -417,7 +417,7 @@ def mlp_exp(datafolder, prefix, postfix,
 
     training_end = time.time()
     
-    time_message = tr_time(training_start, training_end)
+    training_time, time_message = tr_time(training_start, training_end)
 
     #epochs history data to store
     history_dict = history.history
@@ -550,10 +550,11 @@ def mlp_exp(datafolder, prefix, postfix,
             mlflow.log_param("tr_val_shuffle", shuffle)
             mlflow.log_param("batch_and_steps", use_batch_and_steps)
             mlflow.log_param("pred_threshold", pred_threshold)
+            mlflow.log_param("tr_time_str", time_message)
           
             #mlp metrics
             mlflow.log_metric("epochs_actual", len(history_dict['loss']))
-            mlflow.log_metric("tr_time", time_message)
+            mlflow.log_metric("tr_time", training_time)
 
             for metric in mlp.metrics_names:
                 mlflow.log_metric("tr_"+metric, history_dict[metric][-1])
