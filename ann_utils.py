@@ -18,6 +18,7 @@ import datetime
 import os
 import matplotlib.pyplot as plt
 import math
+import time
 
 from sklearn.metrics import roc_curve, roc_auc_score, confusion_matrix
 from models_utils import *
@@ -224,6 +225,8 @@ def mlp_exp(datafolder, prefix, postfix,
     y_val = y_train[midpoint-validation_size//2:midpoint+validation_size//2]
     partial_y_train = np.array(list(y_train[:midpoint-validation_size//2])+list(y_train[midpoint+validation_size//2:]))
 
+    training_start = time.time() #tracking training time
+
     #fitting
     if early_stopping: #including early stopping callback
 
@@ -254,6 +257,11 @@ def mlp_exp(datafolder, prefix, postfix,
                               shuffle=shuffle)
 
 
+    training_end = time.time()
+    training_time = training_end-training_start
+
+    print("Training completed in {} ".format(training_time))
+
     #epochs history data to store
     history_dict = history.history
     history_dict['experiment'] = experiment_name
@@ -263,7 +271,7 @@ def mlp_exp(datafolder, prefix, postfix,
     if plot_diagnostics:
         plot_epochs_graph(history_dict, 'loss')
         plot_epochs_graph(history_dict, 'accuracy')
-        plot_epochs_graph(history_dict,  'auc') 
+        plot_epochs_graph(history_dict,  'auc'+mlp.name.split('sequential')[-1]) #name extension to match variable auc names
 
     if save_model:
         output_path = models_path+experiment_name+'/'
@@ -374,6 +382,7 @@ def mlp_exp(datafolder, prefix, postfix,
           
             #mlp metrics
             mlflow.log_metric("epochs_actual", len(history_dict['loss']))
+            mlflow.log_metric("tr_time", training_time)
 
             for metric in mlp.metrics_names:
                 mlflow.log_metric("tr_"+metric, history_dict[metric][-1])
