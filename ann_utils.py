@@ -266,10 +266,12 @@ def mlp_exp(datafolder, prefix, postfix,
         mins = int((training_time%3600)//60)
         secs = round((training_time%3600)%60, 2)
         time_message = "Training completed in {} hrs, {} mins and {} secs".format(hrs, mins, secs)
+        print("-------------TRAINING TIME--------------")
         print(time_message)
     else:
         mins = int(training_time//60)
         secs = round(training_time%60,2)
+        print("-------------TRAINING TIME--------------")
         time_message = "Training completed in {} mins and {} secs".format(mins, secs)
         print(time_message)
 
@@ -284,12 +286,20 @@ def mlp_exp(datafolder, prefix, postfix,
         plot_epochs_graph(history_dict, 'loss')
         plot_epochs_graph(history_dict, 'accuracy')
         try: #handling some inconsistency in naming the metrics during training
+            try_this = history_dict['auc']
             plot_epochs_graph(history_dict,  'auc') 
         except KeyError:
             if mlp.name.split('sequential')[-1]!='': 
-                plot_epochs_graph(history_dict,  'auc'+mlp.name.split('sequential')[-1]) #name extension to match variable auc names
+                try:
+                    plot_epochs_graph(history_dict,  'auc'+mlp.name.split('sequential')[-1]) #name extension to match variable auc names
+                except KeyError:
+                    plot_epochs_graph(history_dict,  'auc'+ '_'+str(int(mlp.name.split('sequential')[-1].split('_')[1])+1)) #name extension to match variable auc names
             else:
-                plot_epochs_graph(history_dict,  'auc_1')
+                try:
+                    plot_epochs_graph(history_dict,  'auc_1')
+                except KeyError:
+                    print("There's no way of getting to auc data, please check history_dict and mlp seuqential name")
+                    pass
 
     if save_model:
         output_path = models_path+experiment_name+'/'
