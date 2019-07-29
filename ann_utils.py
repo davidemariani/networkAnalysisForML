@@ -301,10 +301,103 @@ def mlp_exp(datafolder, prefix, postfix,
 
     rcm = cm_ratio(cm)
     tnr, fpr, fnr, tpr = rcm.ravel()
-    print(rcm)
 
     history_dict['test_confusion_matrix'] = {'tn':tn, 'fp':fp, 'fn':fn, 'tp':tp,
                                              'tnr':tnr, 'fpr':fpr, 'fnr':fnr, 'tpr':tpr}
+
+    #saving results dictionary for viz
+    if save_results_for_viz:
+        dict_name = save_dictionary(history_dict, viz_output_path+experiment_name+'/', filename.split('.')[0],'_viz')
+
+    if mlf_tracking: #mlflow tracking
+
+        #checking the name of existing experiments
+        expnames = set([exp.name for exp in mlflow.tracking.MlflowClient().list_experiments()])
+
+        #creating a new experiment if its name is not among the existing ones
+        if experiment_name not in expnames:
+            print("- Creating the new experiment '{}',  the following results will be saved in it...".format(experiment_name))
+            exp_id = mlflow.create_experiment(experiment_name)
+        else: #adding new results to the existing one otherwise
+            print("- Activating existing experiment '{}', the following results will be saved in it...".format(experiment_name))
+            mlflow.set_experiment(experiment_name)
+            exp_id = mlflow.tracking.MlflowClient().get_experiment_by_name(experiment_name).experiment_id
+               
+        with mlflow.start_run(experiment_id=exp_id, run_name=prefix + modeltype): #create and initialize experiment
+
+            print("- Tracking the experiment on mlflow...")
+
+            #experiment type tracking
+            mlflow.log_param("experiment_type", prefix)
+
+            #source file tracking
+            mlflow.log_param("train_file_path", trainfiles)
+            mlflow.log_param("train_file_name", prefix + trainfile + postfix+'.pkl')
+            mlflow.log_param("test_file_path", testfiles)
+            mlflow.log_param("test_file_name", prefix + testfile + postfix+'.pkl')
+            mlflow.log_param("train_size", X_train.shape[0])
+            mlflow.log_param("test_size", X_test.shape[0])
+
+            mlflow.log_param("partial_train_size", partial_X_train.shape[0])
+            mlflow.log_param("validation_size", X_val.shape[0])
+
+            #model info and hyperparameters tracking
+            mlflow.log_param("model_type", modeltype)
+
+            if save_model:
+                mlflow.log_param("model_filename", filename)
+                mlflow.log_param("model_filepath", filepath)
+            else:
+                mlflow.log_param("model_filename", None)
+                mlflow.log_param("model_filepath", None)
+
+            #mlp hyperparameters:
+            mlflow.log_param("hidden_layers_no", hidden_layers_no)
+            mlflow.log_param("hidden_nodes", str(hidden_nodes))
+            mlflow.log_param("hl_out_activations", str([l['config']['activation'] for l in mlp.get_config()['layers'] if l['class_name']=='Dense']))
+            mlflow.log_param("optimizer", str(optimizer).split('tensorflow.python.keras.optimizer_v2.')[1].split(' ')[0])
+            mlflow.log_param("batch_size", batch_size)
+            mlflow.log_param("loss_func", str(mlp.loss).split('<tensorflow.python.keras.losses.')[1].split(' ')[0])
+            mlflow.log_param("epochs_settings", epochs)
+            mlflow.log_param("kernel_init", str(kernel_initializer.get_config()))
+            mlflow.log_param("kernel_regularizers", str(kernel_regularizers))
+            mlflow.log_param("bias_init", str([l['config']['bias_initializer']['class_name'] for l in mlp.get_config()['layers'] if l['class_name']=='Dense']))
+            mlflow.log_param("dropout", dropout)
+            mlflow.log_param("early_stopping", early_stopping)
+            if early_stopping:
+                mlflow.log_param("early_stopping_metric", str(to_monitor))
+            mlflow.log_param("class_1_weight", class_1_weight)
+            mlflow.log_param("validation_size", validation_size)
+            mlflow.log_param("tr_val_shuffle", shuffle)
+            mlflow.log_param("batch_and_steps", use_batch_and_steps)
+            mlflow.log_param("pred_threshold", pred_threshold)
+          
+            #mlp metrics
+            mlflow.log_metric("epochs_actual", len(history_dict['loss']))
+
+            for metric in mlp.metrics_names:
+                mlflow.log_metric("tr_"+metric, history_dict[metric][-1])
+                mlflow.log_metric("val_"+metric, history_dict['val_'+metric][-1])
+
+            mlflow.log_metric("test_auc", history_dict['test_results']['auc'])
+            mlflow.log_metric("test_tp", history_dict["test_confusion_matrix"]["tp"])
+            mlflow.log_metric("test_tn", history_dict["test_confusion_matrix"]["tn"])
+            mlflow.log_metric("test_fp", history_dict["test_confusion_matrix"]["fp"])
+            mlflow.log_metric("test_fn", history_dict["test_confusion_matrix"]["fn"])
+            mlflow.log_metric("test_tpr", history_dict["test_confusion_matrix"]["tpr"])
+            mlflow.log_metric("test_tnr", history_dict["test_confusion_matrix"]["tnr"])
+            mlflow.log_metric("test_fpr", history_dict["test_confusion_matrix"]["fpr"])
+            mlflow.log_metric("test_fnr", history_dict["test_confusion_matrix"]["fnr"])
+
+            #storing the model file as pickle
+            mlflow.keras.log_model(mlp, "model")
+
+            #storing pipeline-processed trainset and testset
+            mlflow.log_artifact(trainfiles, "train_file")
+            mlflow.log_artifact(testfiles, "test_file")
+            mlflow.log_artifact(dict_name, "results_dict_for_viz")
+
+            print("- Experiment tracked.")
 
     return history_dict
 

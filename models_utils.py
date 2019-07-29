@@ -300,6 +300,8 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
                     mlflow.log_artifact(trainfiles, "train_file")
                     mlflow.log_artifact(testfiles, "test_file")
                     mlflow.log_artifact(dict_name, "results_dict_for_viz")
+
+                    print("- Experiment tracked.")
             print()
     return results
 
