@@ -202,7 +202,7 @@ def mlp_exp(datafolder, prefix, postfix,
     [X_train, y_train, feature_labels] = pd.read_pickle(trainfiles) 
     [X_test, y_test, feature_labels] = pd.read_pickle(testfiles) 
     
-    input_shape = len(feature_labels)
+    input_shape = len(feature_labels) #shape of experiment input
 
     #create mlp
     mlp = create_mlp_model(input_shape=input_shape, 
@@ -261,7 +261,18 @@ def mlp_exp(datafolder, prefix, postfix,
     training_end = time.time()
     training_time = training_end-training_start
 
-    print("Training completed in {} ".format(training_time))
+    if training_time>3600:
+        hrs = int(training_time//3600)
+        mins = int((training_time%3600)//60)
+        secs = round((training_time%3600)%60, 2)
+        time_message = "Training completed in {} hrs, {} mins and {} secs".format(hrs, mins, secs)
+        print(time_message)
+    else:
+        mins = int(training_time//60)
+        secs = round(training_time%60,2)
+        time_message = "Training completed in {} mins and {} secs".format(mins, secs)
+        print(time_message)
+
 
     #epochs history data to store
     history_dict = history.history
@@ -389,7 +400,7 @@ def mlp_exp(datafolder, prefix, postfix,
           
             #mlp metrics
             mlflow.log_metric("epochs_actual", len(history_dict['loss']))
-            mlflow.log_metric("tr_time", training_time)
+            mlflow.log_metric("tr_time", time_message)
 
             for metric in mlp.metrics_names:
                 mlflow.log_metric("tr_"+metric, history_dict[metric][-1])
