@@ -114,7 +114,7 @@ def create_mlp_model(input_shape = 16,
     return model
 
 
-def plot_epochs_graph(history_dict, metric):
+def plot_epochs_graph(history_dict, metric, plot_validation):
     """
     This function takes as inputs a dictionary containing mpl history data
     and the name of the metric to monitor, and plot a graph using matplotlib 
@@ -122,17 +122,25 @@ def plot_epochs_graph(history_dict, metric):
     """
 
     values = history_dict[metric]
-    val_values = history_dict['val_'+metric]
-    epochs = range(1, len(val_values)+1)
+    epochs = range(1, len(values)+1)
 
-    plt.plot(epochs, values, 'bo', label='Train {:}'.format(metric))
-    plt.plot(epochs, val_values, 'b', label='Validation {:}'.format(metric))
-    plt.title("Training and validation {:}".format(metric))
-    plt.xlabel("Epochs")
-    plt.ylabel(metric)
-    plt.legend()
+    if plot_validation:
+        val_values = history_dict['val_'+metric]
+        plt.plot(epochs, values, 'bo', label='Train {:}'.format(metric))
+        plt.plot(epochs, val_values, 'r', label='Validation {:}'.format(metric))
+        plt.title("Training and validation {:}".format(metric))
+        plt.xlabel("Epochs")
+        plt.ylabel(metric)
+        plt.legend()
+        plt.show()
 
-    plt.show()
+    else:
+        plt.plot(epochs, values, 'bo', label='Train {:}'.format(metric))
+        plt.title("Training {:}".format(metric))
+        plt.xlabel("Epochs")
+        plt.ylabel(metric)
+        plt.legend()
+        plt.show()
 
 
 def save_tf_model(model, datafolder, model_name, prefix):
@@ -163,7 +171,147 @@ def save_tf_model(model, datafolder, model_name, prefix):
     return (filename, filepath)
 
 
+def validation_split(X_train, y_train, validation_size, validation_mode='midpoint'):
+    """
+    This function will split training set into two parts in order to take one of it for validation depending on the validation modes
+    (midpoint, startpoint, endpoint)
+    """
 
+    if validation_mode=='midpoint':
+        midpoint = X_train.shape[0]//2 #in order to have meaningful data for validation, val data are taken from the midpoint of the training set (data are sorted by time and not shuffled)
+        X_val = X_train[midpoint-validation_size//2:midpoint+validation_size//2]
+        partial_X_train = np.array(list(X_train[:midpoint-validation_size//2])+list(X_train[midpoint+validation_size//2:]))
+        y_val = y_train[midpoint-validation_size//2:midpoint+validation_size//2]
+        partial_y_train = np.array(list(y_train[:midpoint-validation_size//2])+list(y_train[midpoint+validation_size//2:]))
+    
+    elif validation_mode=='startpoint':
+        X_val = X_train[:validation_size]
+        partial_X_train = X_train[validation_size:]
+        y_val = y_train[:validation_size]
+        partial_y_train = y_train[validation_size:]
+
+    elif validation_mode=='endpoint':
+        X_val = X_train[len(X_train)-validation_size:]
+        partial_X_train = X_train[:len(X_train)-validation_size]
+        y_val = y_train[len(X_train)-validation_size:]
+        partial_y_train = y_train[:len(X_train)-validation_size]
+
+    return partial_X_train, X_val, partial_y_train, y_val
+
+
+
+def tr_time(training_start, training_end):
+    """
+    This function calculates the training time having a time start and a time end to compute it.
+    It also prints the results on screen and return the message to be stored for tracking.
+    """
+
+    training_time = training_end-training_start
+
+    if training_time>3600:
+        hrs = int(training_time//3600)
+        mins = int((training_time%3600)//60)
+        secs = round((training_time%3600)%60, 2)
+        time_message = "Training completed in {} hrs, {} mins and {} secs".format(hrs, mins, secs)
+        print("-------------TRAINING TIME--------------")
+        print(time_message)
+    else:
+        mins = int(training_time//60)
+        secs = round(training_time%60,2)
+        print("-------------TRAINING TIME--------------")
+        time_message = "Training completed in {} mins and {} secs".format(mins, secs)
+        print(time_message)
+
+    return time_message
+
+
+
+def mlp_training(mlp, X_train, y_train, epochs=50, batch_size=512, use_batch_and_steps=False, class_1_weight=25, shuffle=False,
+                 validation_ep=True, validation_size=1000, validation_mode='midpoint', early_stopping=True, to_monitor=('accuracy',0.9)):
+    """
+    This function is an auxiliar function for mlp_exp and performs a multi-layer perceptron training considering the following parameters and attributes:
+    mlp (the mlp to train), X_train (train set observations), y_train (train set labels), epochs (int), batch_size (int), use_batch_and_steps (True/False),
+    class_1_weight (int), shuffle (True/False), validation_ep (True/False - it indicates if a portion of train set is used for validation), validation_size (int),
+    validation_mode (type of validation portion in regard to the train set: 'midpoint', 'endpoint', 'startpoint'),
+    early_stopping (True/False), to_monitor (metric to monitor and value to stop for early stopping)
+    """
+
+    #fitting
+    if early_stopping: #including early stopping callback
+
+        print("Early stopping active: training will be stopped when {0} overcomes the value {1}".format(to_monitor[0], to_monitor[1]))
+
+        es_callback = TerminateOnBaseline(to_monitor[0], to_monitor[1])
+
+        if validation_ep: #training with epochs validation
+            partial_X_train, X_val, partial_y_train, y_val = validation_split(X_train, y_train, validation_size, validation_mode)
+
+            if use_batch_and_steps: #case where both steps per epochs and batch size are used
+                history = mlp.fit(partial_X_train, partial_y_train, epochs=epochs,  batch_size = batch_size, verbose=1, 
+                    callbacks=[es_callback], steps_per_epoch = math.ceil(partial_X_train.shape[0]/batch_size),
+                                validation_data=(X_val, y_val), class_weight={0:1, 1:class_1_weight}, 
+                                shuffle=shuffle)
+            else:
+                history = mlp.fit(partial_X_train, partial_y_train, epochs=epochs,  batch_size = batch_size, verbose=1, 
+                    callbacks=[es_callback],  
+                                validation_data=(X_val, y_val), class_weight={0:1, 1:class_1_weight}, 
+                                shuffle=shuffle)
+
+        else: #case without validation split
+            if use_batch_and_steps: #case where both steps per epochs and batch size are used
+                history = mlp.fit(X_train, y_train, epochs=epochs,  batch_size = batch_size, verbose=1, 
+                    callbacks=[es_callback], steps_per_epoch = math.ceil(X_train.shape[0]/batch_size),
+                                class_weight={0:1, 1:class_1_weight}, shuffle=shuffle)
+            else:
+                history = mlp.fit(X_train, y_train, epochs=epochs,  batch_size = batch_size, verbose=1, 
+                    callbacks=[es_callback], class_weight={0:1, 1:class_1_weight}, shuffle=shuffle)
+
+    else: #case without early stopping callback
+
+        if validation_ep: #training with epochs validation
+            partial_X_train, X_val, partial_y_train, y_val = validation_split(X_train, y_train, validation_size, validation_mode)
+
+            if use_batch_and_steps: #case where both steps per epochs and batch size are used
+                history = mlp.fit(partial_X_train, partial_y_train, epochs=epochs,  batch_size = batch_size, verbose=1, 
+                                    steps_per_epoch = math.ceil(partial_X_train.shape[0]/batch_size),
+                                    validation_data=(X_val, y_val), class_weight={0:1, 1:class_1_weight}, 
+                                    shuffle=shuffle)
+            else:
+                history = mlp.fit(partial_X_train, partial_y_train, epochs=epochs,  batch_size = batch_size, verbose=1, 
+                                    validation_data=(X_val, y_val), class_weight={0:1, 1:class_1_weight}, 
+                                    shuffle=shuffle)
+        else:#case without validation split
+            if use_batch_and_steps: #case where both steps per epochs and batch size are used
+                history = mlp.fit(X_train, y_train, epochs=epochs,  batch_size = batch_size, verbose=1, 
+                                    steps_per_epoch = math.ceil(X_train.shape[0]/batch_size),
+                                    class_weight={0:1, 1:class_1_weight}, 
+                                    shuffle=shuffle)
+            else:
+                history = mlp.fit(X_train, y_train, epochs=epochs,  batch_size = batch_size, verbose=1, 
+                                    class_weight={0:1, 1:class_1_weight}, 
+                                    shuffle=shuffle)
+    if validation_ep:
+        return history, X_val, y_val
+    else:
+        return history
+
+def mlp_oostest(model, X_test, y_test, pred_thr):
+    """
+    This function tests the model performance on out of sample data
+    """
+
+    #cm
+    y_score = model.predict(X_test)>pred_thr
+    cm = confusion_matrix(y_test, y_score)
+    rcm = cm_ratio(cm)
+
+    #metrics
+    fpr, tpr, thresholds = roc_curve(y_test, y_score)
+    auc = roc_auc_score(y_test, y_score)
+
+    print("AUC {:.3f}".format(auc))
+
+    return {'fpr':fpr, 'tpr':tpr, 'auc':auc, 'rcm':rcm, 'cm':cm}
 
 
 def mlp_exp(datafolder, prefix, postfix, 
@@ -182,7 +330,9 @@ def mlp_exp(datafolder, prefix, postfix,
                batch_size=512,
                epochs=5,
                class_1_weight=50,
+               validation_ep = True,
                validation_size=10000,
+               validation_mode = 'midpoint',
                pred_threshold = 0.55,
                kernel_regularizers=[],
                shuffle=False,
@@ -191,6 +341,41 @@ def mlp_exp(datafolder, prefix, postfix,
                plot_diagnostics = True,
                models_path='../data/models/', mlf_tracking=False, experiment_name='experiment',
                save_results_for_viz=False, viz_output_path='../data/viz_data/'):
+
+    """
+    This function performs an end-to-end experiment (training, validation, testing) using a multi-layer perceptron.
+    It returns a dictionary with the experiment data and a list with the predictions.
+    It requires the following inputs:
+    - datfolder: the folder from where taking the input data files
+    - prefix: prefix id of the input datafile
+    - postfix: postfix id of the input datafile
+    - trainfile and testfile name
+    - hidden_layers_no: number of hidden layers for the mlp architecture (int)
+    - hidden_nodes: list containing the number of nodes for each hidden layer in sequence
+    - hl_activations: list containing the activation functions for each hidden layer in sequence
+    - optimizer: learning algorithm to use
+    - loss_func: the function used to calculate the loss
+    - kernel_initializer: kernel initializer (lecun_uniform is the default)
+    - bias_initializer: weights bias initializer (zeros is the default)
+    - metrics: metrics to monitor during training
+    - dropout: list of dropout values. No dropout is used if the list is empty
+    - to_monitor: this is an input used with "early_stopping", which indicates for which metric and for which value the early stopping stops the process
+    - early_stopping: Boolean indicating if early_stopping will be active or not
+    - batch_size: batch size
+    - epochs: number of epochs for training
+    - class_1_weight: the weight to give to the event to detect
+    - validation_ep: Boolean indicating if during training a portion of the training set is used for validation at each epoch comparing training and validation
+    - validation_size: the size of the validation portion to take from the train set
+    - validation_mode: the way the validation portion will be taken from the train set: if 'midpoint' from the middle, if 'endpoint' from the end, if 'startpoint' from the start
+    - kernel_regularizers: list of regularizers for each layer
+    - shuffle: if train and validation data are shuffled
+    - use_batch_and_steps: if True, the train set is used train.shape[0]//batch_size times for each epoch, otherwise a batch of the selected size is taken from it and used once for each epoch
+    - save_model: if True, the model is saved at model_path
+    - plot_diagnostics: if True, plots showing main training info are displayed
+    - mlf_tracking: if True, mlflow is activated for tracking the experiment
+    - experiment_name: experiment name
+    - save_results_for_viz: if True, the dictionary containing experiment data is saved at viz_output_path
+    """
 
     #loading preprocessed data
     trainfiles = datafolder + prefix + trainfile + postfix+'.pkl'
@@ -219,62 +404,19 @@ def mlp_exp(datafolder, prefix, postfix,
 
     modeltype = mlp.get_config()['name']
 
-    #taking validation dataset from the training dataset
-    midpoint = X_train.shape[0]//2 #in order to have meaningful data for validation, val data are taken from the midpoint of the training set (data are sorted by time and not shuffled)
-    X_val = X_train[midpoint-validation_size//2:midpoint+validation_size//2]
-    partial_X_train = np.array(list(X_train[:midpoint-validation_size//2])+list(X_train[midpoint+validation_size//2:]))
-    y_val = y_train[midpoint-validation_size//2:midpoint+validation_size//2]
-    partial_y_train = np.array(list(y_train[:midpoint-validation_size//2])+list(y_train[midpoint+validation_size//2:]))
-
     training_start = time.time() #tracking training time
 
-    #fitting
-    if early_stopping: #including early stopping callback
-
-        print("Early stopping active: training will be stopped when {0} overcomes the value {1}".format(to_monitor[0], to_monitor[1]))
-
-        es_callback = TerminateOnBaseline(to_monitor[0], to_monitor[1])
-
-        if use_batch_and_steps: #case where both steps per epochs and batch size are used
-            history = mlp.fit(partial_X_train, partial_y_train, epochs=epochs,  batch_size = batch_size, verbose=1, 
-                callbacks=[es_callback], steps_per_epoch = math.ceil(X_train.shape[0]/batch_size),
-                         validation_data=(X_val, y_val), class_weight={0:1, 1:class_1_weight}, 
-                          shuffle=shuffle)
-        else:
-            history = mlp.fit(partial_X_train, partial_y_train, epochs=epochs,  batch_size = batch_size, verbose=1, 
-                callbacks=[es_callback],  
-                         validation_data=(X_val, y_val), class_weight={0:1, 1:class_1_weight}, 
-                          shuffle=shuffle)
-
-    else: #case without early stopping callback
-        if use_batch_and_steps: #case where both steps per epochs and batch size are used
-            history = mlp.fit(partial_X_train, partial_y_train, epochs=epochs,  batch_size = batch_size, verbose=1, 
-                             steps_per_epoch = math.ceil(X_train.shape[0]/batch_size),
-                             validation_data=(X_val, y_val), class_weight={0:1, 1:class_1_weight}, 
-                              shuffle=shuffle)
-        else:
-            history = mlp.fit(partial_X_train, partial_y_train, epochs=epochs,  batch_size = batch_size, verbose=1, 
-                             validation_data=(X_val, y_val), class_weight={0:1, 1:class_1_weight}, 
-                              shuffle=shuffle)
-
+    #training
+    if validation_ep: #if a validation split is done, X_val and y_val are returned for last evaluations on validation set before testing
+        history, X_val, y_val = mlp_training(mlp, X_train, y_train, epochs=epochs, batch_size=batch_size, use_batch_and_steps=use_batch_and_steps, class_1_weight=class_1_weight, shuffle=shuffle,
+                    validation_ep=validation_ep, validation_size=validation_size, validation_mode=validation_mode, early_stopping=early_stopping, to_monitor=to_monitor)
+    else:
+        history = mlp_training(mlp, X_train, y_train, epochs=epochs, batch_size=batch_size, use_batch_and_steps=use_batch_and_steps, class_1_weight=class_1_weight, shuffle=shuffle,
+                    validation_ep=validation_ep, validation_size=validation_size, validation_mode=validation_mode, early_stopping=early_stopping, to_monitor=to_monitor)
 
     training_end = time.time()
-    training_time = training_end-training_start
-
-    if training_time>3600:
-        hrs = int(training_time//3600)
-        mins = int((training_time%3600)//60)
-        secs = round((training_time%3600)%60, 2)
-        time_message = "Training completed in {} hrs, {} mins and {} secs".format(hrs, mins, secs)
-        print("-------------TRAINING TIME--------------")
-        print(time_message)
-    else:
-        mins = int(training_time//60)
-        secs = round(training_time%60,2)
-        print("-------------TRAINING TIME--------------")
-        time_message = "Training completed in {} mins and {} secs".format(mins, secs)
-        print(time_message)
-
+    
+    time_message = tr_time(training_start, training_end)
 
     #epochs history data to store
     history_dict = history.history
@@ -282,21 +424,29 @@ def mlp_exp(datafolder, prefix, postfix,
     history_dict['prefix'] = prefix
     history_dict['postfix'] = postfix
 
-    if plot_diagnostics:
-        plot_epochs_graph(history_dict, 'loss')
-        plot_epochs_graph(history_dict, 'accuracy')
+    if plot_diagnostics: #plotting model data
+        plot_epochs_graph(history_dict, 'loss', validation_ep)
+        plot_epochs_graph(history_dict, 'accuracy', validation_ep)
         try: #handling some inconsistency in naming the metrics during training
             try_this = history_dict['auc']
-            plot_epochs_graph(history_dict,  'auc') 
+            plot_epochs_graph(history_dict,  'auc', validation_ep) 
         except KeyError:
             if mlp.name.split('sequential')[-1]!='': 
                 try:
-                    plot_epochs_graph(history_dict,  'auc'+mlp.name.split('sequential')[-1]) #name extension to match variable auc names
+                    plot_epochs_graph(history_dict,  'auc'+mlp.name.split('sequential')[-1], validation_ep) #name extension to match variable auc names
                 except KeyError:
-                    plot_epochs_graph(history_dict,  'auc'+ '_'+str(int(mlp.name.split('sequential')[-1].split('_')[1])+1)) #name extension to match variable auc names
+                    not_found = True
+                    running_number = int(mlp.name.split('sequential')[-1].split('_')[1])
+                    while not_found:
+                        running_number+=1
+                        try:
+                            plot_epochs_graph(history_dict,  'auc'+ '_'+str(running_number), validation_ep) #name extension to match variable auc names
+                        except KeyError:
+                            plot_epochs_graph(history_dict,  'auc'+ '_'+str(running_number+1), validation_ep)
+                        not_found=False
             else:
                 try:
-                    plot_epochs_graph(history_dict,  'auc_1')
+                    plot_epochs_graph(history_dict,  'auc_1', validation_ep)
                 except KeyError:
                     print("There's no way of getting to auc data, please check history_dict and mlp seuqential name")
                     pass
@@ -306,40 +456,31 @@ def mlp_exp(datafolder, prefix, postfix,
         print('- Saving the model to {}...'.format(output_path))
         filename, filepath = save_tf_model(mlp, output_path, modeltype, prefix)
         
-    #predictions on validation-set
-    predictions_val = mlp.predict(X_val)
+    #predictions on validation-set if validation_ep is active
+    if validation_ep:
+        #validation AUC
+        print("Prediction performance on {} observations from validation set using holdout".format(X_val.shape[0]))
+        history_dict['validation_results'] = mlp_oostest(mlp, X_val, y_val, pred_threshold)
 
-    #validation AUC
-    print("Prediction performance on {} observations from validation set using holdout".format(X_val.shape[0]))
-    vfpr, vtpr, vthresholds = roc_curve(y_val, predictions_val) 
-    vauc = roc_auc_score(y_val, predictions_val)
-    print('AUC: {}'.format(vauc))
-
-    history_dict['validation_results'] = {'fpr':vfpr, 'tpr':vtpr, 'auc':vauc}
-
-    #predictions on test-set
-    predictions = mlp.predict(X_test)
-    preds = (predictions>pred_threshold)
 
     #test AUC
     print("Prediction performance on {} observations from test set".format(X_test.shape[0]))
-    fpr, tpr, thresholds = roc_curve(y_test, predictions) 
-    auc = roc_auc_score(y_test, predictions)
-    print('AUC: {}'.format(auc))
-
-    history_dict['test_results'] = {'fpr':fpr, 'tpr':tpr, 'auc':auc}
+    history_dict['test_results'] = mlp_oostest(mlp, X_test, y_test, pred_threshold) 
 
     #test cm
     print("Confusion matrix:")
-    cm = confusion_matrix(y_test, preds)
+    cm = history_dict['test_results']['cm']  #confusion_matrix(y_test, preds)
     tn, fp, fn, tp = cm.ravel()
     print(cm)
 
-    rcm = cm_ratio(cm)
+    rcm = history_dict['test_results']['rcm']  #cm_ratio(cm)
     tnr, fpr, fnr, tpr = rcm.ravel()
 
     history_dict['test_confusion_matrix'] = {'tn':tn, 'fp':fp, 'fn':fn, 'tp':tp,
                                              'tnr':tnr, 'fpr':fpr, 'fnr':fnr, 'tpr':tpr}
+
+    #predictions
+    preds = mlp.predict(X_test)>pred_threshold
 
     #saving results dictionary for viz
     if save_results_for_viz:
@@ -374,8 +515,10 @@ def mlp_exp(datafolder, prefix, postfix,
             mlflow.log_param("train_size", X_train.shape[0])
             mlflow.log_param("test_size", X_test.shape[0])
 
-            mlflow.log_param("partial_train_size", partial_X_train.shape[0])
-            mlflow.log_param("validation_size", X_val.shape[0])
+            if validation_ep:
+                mlflow.log_param("partial_train_size", partial_X_train.shape[0])
+                mlflow.log_param("validation_size", X_val.shape[0])
+                mlflow.log_param("validation_size", validation_size)
 
             #model info and hyperparameters tracking
             mlflow.log_param("model_type", modeltype)
@@ -403,7 +546,6 @@ def mlp_exp(datafolder, prefix, postfix,
             if early_stopping:
                 mlflow.log_param("early_stopping_metric", str(to_monitor))
             mlflow.log_param("class_1_weight", class_1_weight)
-            mlflow.log_param("validation_size", validation_size)
             mlflow.log_param("tr_val_shuffle", shuffle)
             mlflow.log_param("batch_and_steps", use_batch_and_steps)
             mlflow.log_param("pred_threshold", pred_threshold)
@@ -414,7 +556,8 @@ def mlp_exp(datafolder, prefix, postfix,
 
             for metric in mlp.metrics_names:
                 mlflow.log_metric("tr_"+metric, history_dict[metric][-1])
-                mlflow.log_metric("val_"+metric, history_dict['val_'+metric][-1])
+                if validation_ep:
+                    mlflow.log_metric("val_"+metric, history_dict['val_'+metric][-1])
 
             mlflow.log_metric("test_auc", history_dict['test_results']['auc'])
             mlflow.log_metric("test_tp", history_dict["test_confusion_matrix"]["tp"])
@@ -436,7 +579,7 @@ def mlp_exp(datafolder, prefix, postfix,
 
             print("- Experiment tracked.")
 
-    return history_dict
+    return history_dict, preds
 
 def main():
     print("ann_utils.py executed/loaded..")
