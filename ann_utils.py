@@ -315,6 +315,40 @@ def mlp_oostest(model, X_test, y_test, pred_thr):
     return {'fpr':fpr, 'tpr':tpr, 'auc':auc, 'rcm':rcm, 'cm':cm}
 
 
+
+def plot_diag(history_dict, validation_ep, model_seq_name):
+    """
+    This function call the plot_epochs_graph function handling the exceptions
+    due to dynamic names assigned during training
+    """
+
+    plot_epochs_graph(history_dict, 'loss', validation_ep)
+    plot_epochs_graph(history_dict, 'accuracy', validation_ep)
+    try: #handling some inconsistency in naming the metrics during training
+        try_this = history_dict['auc']
+        plot_epochs_graph(history_dict,  'auc', validation_ep) 
+    except KeyError:
+        if model_seq_name!='': 
+            try:
+                plot_epochs_graph(history_dict,  'auc'+model_seq_name, validation_ep) #name extension to match variable auc names
+            except KeyError:
+                not_found = True
+                running_number = int(model_seq_name.split('_')[1])
+                while not_found:
+                    running_number+=1
+                    try:
+                        plot_epochs_graph(history_dict,  'auc'+ '_'+str(running_number), validation_ep) #name extension to match variable auc names
+                    except KeyError:
+                        plot_epochs_graph(history_dict,  'auc'+ '_'+str(running_number+1), validation_ep)
+                    not_found=False
+        else:
+            try:
+                plot_epochs_graph(history_dict,  'auc_1', validation_ep)
+            except KeyError:
+                print("There's no way of getting to auc data, please check history_dict and mlp seuqential name")
+                pass
+
+
 def mlp_exp(datafolder, prefix, postfix, 
             trainfile='_traindata', testfile='_testdata',
                hidden_layers_no=1,
@@ -339,6 +373,7 @@ def mlp_exp(datafolder, prefix, postfix,
                shuffle=False,
                use_batch_and_steps=False,
                save_model=False,
+               retrain_for_testing = False,
                plot_diagnostics = True,
                models_path='../data/models/', mlf_tracking=False, experiment_name='experiment',
                save_results_for_viz=False, viz_output_path='../data/viz_data/'):
@@ -426,36 +461,7 @@ def mlp_exp(datafolder, prefix, postfix,
     history_dict['postfix'] = postfix
 
     if plot_diagnostics: #plotting model data
-        plot_epochs_graph(history_dict, 'loss', validation_ep)
-        plot_epochs_graph(history_dict, 'accuracy', validation_ep)
-        try: #handling some inconsistency in naming the metrics during training
-            try_this = history_dict['auc']
-            plot_epochs_graph(history_dict,  'auc', validation_ep) 
-        except KeyError:
-            if mlp.name.split('sequential')[-1]!='': 
-                try:
-                    plot_epochs_graph(history_dict,  'auc'+mlp.name.split('sequential')[-1], validation_ep) #name extension to match variable auc names
-                except KeyError:
-                    not_found = True
-                    running_number = int(mlp.name.split('sequential')[-1].split('_')[1])
-                    while not_found:
-                        running_number+=1
-                        try:
-                            plot_epochs_graph(history_dict,  'auc'+ '_'+str(running_number), validation_ep) #name extension to match variable auc names
-                        except KeyError:
-                            plot_epochs_graph(history_dict,  'auc'+ '_'+str(running_number+1), validation_ep)
-                        not_found=False
-            else:
-                try:
-                    plot_epochs_graph(history_dict,  'auc_1', validation_ep)
-                except KeyError:
-                    print("There's no way of getting to auc data, please check history_dict and mlp seuqential name")
-                    pass
-
-    if save_model:
-        output_path = models_path+experiment_name+'/'
-        print('- Saving the model to {}...'.format(output_path))
-        filename, filepath = save_tf_model(mlp, output_path, modeltype, prefix)
+        plot_diag(history_dict, validation_ep, mlp.name.split('sequential')[-1])
         
     #predictions on validation-set if validation_ep is active
     if validation_ep:
@@ -463,6 +469,39 @@ def mlp_exp(datafolder, prefix, postfix,
         print("Prediction performance on {} observations from validation set using holdout".format(X_val.shape[0]))
         history_dict['validation_results'] = mlp_oostest(mlp, X_val, y_val, pred_threshold)
 
+    if retrain_for_testing:
+        #retraining the model from scratch on the full dataset
+        mlp = create_mlp_model(input_shape=input_shape, 
+                           hidden_layers_no=hidden_layers_no,
+                           hidden_nodes=hidden_nodes, 
+                           hl_activations=hl_activations,                                        
+                           optimizer = optimizer,
+                           loss_func=loss_func,
+                          kernel_regularizers = kernel_regularizers,
+                          kernel_initializer = kernel_initializer,
+                          bias_initializer = bias_initializer,
+                           dropout = dropout,
+                          metrics = metrics)
+
+        ttraining_start = time.time() #tracking training time
+
+        history_test = mlp_training(mlp, X_train, y_train, epochs=epochs, batch_size=batch_size, use_batch_and_steps=use_batch_and_steps, class_1_weight=class_1_weight, shuffle=shuffle,
+                        validation_ep=False, early_stopping=early_stopping, to_monitor=to_monitor)
+
+        ttraining_end = time.time()
+    
+        ttraining_time, ttime_message = tr_time(ttraining_start, ttraining_end)
+
+        if plot_diagnostics: #plotting test model data
+            history_test_dict = history_test.history
+            plot_diag(history_test_dict, False, mlp.name.split('sequential')[-1])
+
+
+    #saving the model
+    if save_model:
+        output_path = models_path+experiment_name+'/'
+        print('- Saving the model to {}...'.format(output_path))
+        filename, filepath = save_tf_model(mlp, output_path, modeltype, prefix)
 
     #test AUC
     print("Prediction performance on {} observations from test set".format(X_test.shape[0]))
@@ -480,7 +519,7 @@ def mlp_exp(datafolder, prefix, postfix,
     history_dict['test_confusion_matrix'] = {'tn':tn, 'fp':fp, 'fn':fn, 'tp':tp,
                                              'tnr':tnr, 'fpr':fpr, 'fnr':fnr, 'tpr':tpr}
 
-    #predictions
+    #actual predictions with threshold
     preds = mlp.predict(X_test)>pred_threshold
 
     #saving results dictionary for viz
