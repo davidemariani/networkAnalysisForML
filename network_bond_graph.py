@@ -42,6 +42,7 @@ def build_bgtfeat(dfi, g, edge_flow='imp_edge_flow', edge_eff='imp_edge_eff', no
     for d in df.debtor_name_1.unique():
         df.loc[df.debtor_name_1==d, d_node_flow] = df.loc[df.debtor_name_1==d, edge_flow].sum()   #node_flow will be used to calculate the energy in the node
     
+    #customers related attributes
     for c in df.customer_name_1.unique():
         df.loc[df.customer_name_1==c, c_node_eff] = np.nansum(df.loc[df.customer_name_1==c, edge_eff])
         df.loc[df.customer_name_1==c, node_flow] = np.nansum(df.loc[df.customer_name_1==c, edge_flow])
