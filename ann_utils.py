@@ -143,6 +143,32 @@ def plot_epochs_graph(history_dict, metric, plot_validation):
         plt.show()
 
 
+def plot_diag(history_dict, validation_ep):
+    """
+    This function call the plot_epochs_graph function handling the exceptions
+    due to dynamic names assigned during training
+    """
+
+    plot_epochs_graph(history_dict, 'loss', validation_ep)
+    plot_epochs_graph(history_dict, 'accuracy', validation_ep)
+
+    count=0
+    not_found=True
+    while not_found:
+        try: #handling some inconsistency in naming the metrics during training
+            if count!=0:
+                try_this = history_dict['auc_'+str(count)]
+                plot_epochs_graph(history_dict,  'auc_'+str(count), validation_ep) 
+                not_found = False
+            else:
+                try_this = history_dict['auc']
+                plot_epochs_graph(history_dict, 'auc', validation_ep) 
+                not_found = False
+        except KeyError:
+            count+=1
+            pass
+
+
 def save_tf_model(model, datafolder, model_name, prefix):
     """
     This function saves a tensorflow model in h5 format
@@ -316,39 +342,6 @@ def mlp_oostest(model, X_test, y_test, pred_thr):
 
 
 
-def plot_diag(history_dict, validation_ep, model_seq_name):
-    """
-    This function call the plot_epochs_graph function handling the exceptions
-    due to dynamic names assigned during training
-    """
-
-    plot_epochs_graph(history_dict, 'loss', validation_ep)
-    plot_epochs_graph(history_dict, 'accuracy', validation_ep)
-    try: #handling some inconsistency in naming the metrics during training
-        try_this = history_dict['auc']
-        plot_epochs_graph(history_dict,  'auc', validation_ep) 
-    except KeyError:
-        if model_seq_name!='': 
-            try:
-                plot_epochs_graph(history_dict,  'auc'+model_seq_name, validation_ep) #name extension to match variable auc names
-            except KeyError:
-                not_found = True
-                running_number = int(model_seq_name.split('_')[1])
-                while not_found:
-                    running_number+=1
-                    try:
-                        plot_epochs_graph(history_dict,  'auc'+ '_'+str(running_number), validation_ep) #name extension to match variable auc names
-                    except KeyError:
-                        plot_epochs_graph(history_dict,  'auc'+ '_'+str(running_number+1), validation_ep)
-                    not_found=False
-        else:
-            try:
-                plot_epochs_graph(history_dict,  'auc_1', validation_ep)
-            except KeyError:
-                print("There's no way of getting to auc data, please check history_dict and mlp seuqential name")
-                pass
-
-
 def mlp_exp(datafolder, prefix, postfix, 
             trainfile='_traindata', testfile='_testdata',
                hidden_layers_no=1,
@@ -462,7 +455,7 @@ def mlp_exp(datafolder, prefix, postfix,
     history_dict['postfix'] = postfix
 
     if plot_diagnostics: #plotting model data
-        plot_diag(history_dict, validation_ep, mlp.name.split('sequential')[-1])
+        plot_diag(history_dict, validation_ep)
         
     #predictions on validation-set if validation_ep is active
     if validation_ep:
@@ -497,7 +490,7 @@ def mlp_exp(datafolder, prefix, postfix,
 
         if plot_diagnostics: #plotting test model data
             history_test_dict = history_test.history
-            plot_diag(history_test_dict, False, mlp.name.split('sequential')[-1])
+            plot_diag(history_test_dict, False)
 
 
     #saving the model
