@@ -407,6 +407,7 @@ def mlp_exp(datafolder, prefix, postfix,
     - shuffle: if train and validation data are shuffled
     - use_batch_and_steps: if True, the train set is used train.shape[0]//batch_size times for each epoch, otherwise a batch of the selected size is taken from it and used once for each epoch
     - save_model: if True, the model is saved at model_path
+    - retrain_for_testing: if True, the model is first trained without a portion of size 'validation_size' for validation, and then retrained on the full training set for the predictions on test set
     - plot_diagnostics: if True, plots showing main training info are displayed
     - mlf_tracking: if True, mlflow is activated for tracking the experiment
     - experiment_name: experiment name
@@ -471,6 +472,8 @@ def mlp_exp(datafolder, prefix, postfix,
 
     if retrain_for_testing:
         #retraining the model from scratch on the full dataset
+        #in case of retraining, the retrained model will be saved and its training time will be recorded
+        #while the model trained with a validation split won't be stored
         mlp = create_mlp_model(input_shape=input_shape, 
                            hidden_layers_no=hidden_layers_no,
                            hidden_nodes=hidden_nodes, 
@@ -483,14 +486,14 @@ def mlp_exp(datafolder, prefix, postfix,
                            dropout = dropout,
                           metrics = metrics)
 
-        ttraining_start = time.time() #tracking training time
+        training_start = time.time() #tracking training time
 
         history_test = mlp_training(mlp, X_train, y_train, epochs=epochs, batch_size=batch_size, use_batch_and_steps=use_batch_and_steps, class_1_weight=class_1_weight, shuffle=shuffle,
                         validation_ep=False, early_stopping=early_stopping, to_monitor=to_monitor)
 
-        ttraining_end = time.time()
+        training_end = time.time()
     
-        ttraining_time, ttime_message = tr_time(ttraining_start, ttraining_end)
+        training_time, time_message = tr_time(training_start, training_end)
 
         if plot_diagnostics: #plotting test model data
             history_test_dict = history_test.history
