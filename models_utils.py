@@ -133,7 +133,20 @@ def save_dictionary(dict, datafolder, dict_name, postfix):
             pickle.dump(dict, pickle_file)
     return filepath
 
-
+def rolling_window(T, ntrain, ntest):
+    """
+    This function executes a generator for performing 'rolling window validation', in which a sliding portion of the training
+    set is used  instead of classical k-fold validation.
+    It asks for the
+    Nsteps = (T - ntrain) // ntest #rounded down number of folds
+    starti = 0 #running first index of training set
+    
+    for count in range(Nsteps):
+        traini = np.array(range(starti, T - (Nsteps-count)*ntest)) #may be longer than ntrain for count==0
+        testi = np.array(range(T - (Nsteps-count)*ntest, T - (Nsteps-count)*ntest + ntest))
+        starti = T - (Nsteps-count-1)*ntest - ntrain
+        yield count, traini, testi, Nsteps
+    """
 
 
 def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata', testfile='_testdata', scoring = {'AUC':'roc_auc'},
