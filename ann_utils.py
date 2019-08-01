@@ -464,6 +464,8 @@ def mlp_exp(datafolder, prefix, postfix,
         history_dict['validation_results'] = mlp_oostest(mlp, X_val, y_val, pred_threshold)
 
     if retrain_for_testing:
+        print()
+        print("Retraining the model using the full training set for proper testing...")
         #retraining the model from scratch on the full dataset
         #in case of retraining, the retrained model will be saved and its training time will be recorded
         #while the model trained with a validation split won't be stored
