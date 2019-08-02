@@ -87,13 +87,22 @@ TTQcolor = {
 def visualize_graph(graph, edges, nodes, nodes_name_column='Company_Name', nodes_size_column='size', nodes_type_column='Type_2',
                     title = 'Network Graph', plot_w = 900, plot_h = 900, file_output = '', nx_k=0.028, nx_iterations=25,
                       nodes_colors = [TTQcolor['sky'], TTQcolor['Salmon'], TTQcolor['marketplaceOrange']], to_highlight = '',
-                      edges_colors = [TTQcolor['whiteGrey'], TTQcolor['warningRed']]):
+                      edges_colors = [TTQcolor['whiteGrey'], TTQcolor['warningRed']], circularLayout=False):
 
     """
     This function will give visual attributes to the graph.
     """
 
-    graph = from_networkx(graph, nx.spring_layout, k=nx_k, iterations=nx_iterations)
+    if circularLayout:
+        graph=GraphRenderer()
+        graph_layout = dict(zip(list(nodes['Company_Name']), list(nodes['coords'])))
+        graph.layout_provider = StaticLayoutProvider(graph_layout = graph_layout)
+
+        edges = edges.drop_duplicates(subset=['xs','ys'])
+        graph.edge_renderer.data_source.data = dict(start = list(edges['xs']),
+                                               end = list(edges['ys']))
+    else:
+        graph = from_networkx(graph, nx.spring_layout, k=nx_k, iterations=nx_iterations)
 
     #unfortunately the use of list comprehension at next step is necessary
     #since bokeh doesn't seem to support other collections like Series or arrays
@@ -124,7 +133,8 @@ def visualize_graph(graph, edges, nodes, nodes_name_column='Company_Name', nodes
     graph.inspection_policy = NodesAndLinkedEdges()
 
     #plot
-    plot = figure(title = title, x_range=(-1.2,1.2), y_range=(-1.2,1.2), tools = "box_select,tap,wheel_zoom,reset,pan,save")
+    plot = figure(title = title, x_range=(-1.2,1.2), y_range=(-1.2,1.2), tools = "box_select,tap,wheel_zoom,reset,pan,save",
+                  plot_width=plot_w, plot_height=plot_h)
     
     #tools and plot graphics
     TOOLTIPS = [('Company Name', '@index'), ('Company Type', '@type')] #hover tooltips
@@ -200,3 +210,6 @@ def graph_from_coordinates(nodes, edges, nodes_name_column='Company_Name', nodes
     plot.axis.visible = False
     
     return plot
+
+
+

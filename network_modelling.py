@@ -65,7 +65,7 @@ def create_nodes_df(df, sellers_colname='customer_name_1', buyers_colname='debto
     #checking debtors which are also customers
     buyers_name = df[buyers_colname].unique()
     sellers_name = df[sellers_colname].unique()
-    hybrids = [i for i in buyers_name if i in set(sellers_name)]
+    hybrids = list(set(buyers_name).intersection(set(sellers_name)))
 
     #adding columns flag the customers which are also debtors
     d['customer_id_is_also_debtor'] = d[sellers_colname].isin(hybrids)
@@ -120,9 +120,7 @@ def create_nodes_df(df, sellers_colname='customer_name_1', buyers_colname='debto
 
 
     #creation of the nodes dataset
-
     nodes_df = pd.DataFrame(dict(zip(['Company_Name', 'ID', 'Type', 'Type_2'], [all_nodes, all_ids, all_types, all_types_2])))
-
     nodes_df = nodes_df.drop_duplicates(subset = 'Company_Name') 
     
     return nodes_df
@@ -134,30 +132,32 @@ def create_edges_df(df, sellers_colname='customer_name_1', buyers_colname='debto
     """
 
     d=df.copy()
-
-    #start and end point of each edge
-    xs = []
-    ys = []
-
-    for idx in d.index:
-        xs+=[d.loc[idx,sellers_colname]]
-        ys+=[d.loc[idx,buyers_colname]]
-
+    
     #connecting customers and debtors
-    edges_couples = [(d.loc[idx,sellers_colname], d.loc[idx,buyers_colname]) for idx in d.index]
+    g_flat = nx.from_pandas_edgelist(d,
+                                 source=buyers_colname,
+                                 target=sellers_colname,
+                                 create_using=nx.DiGraph)
 
-    edges_df = pd.DataFrame(data = {'xs':xs, 'ys':ys, 'edges_couples':edges_couples}, index = xs) #edges dataframe indexed by sellers names
+    
+    edges_couples = list(g_flat.edges)
+
+    edges_df = pd.DataFrame(list(g_flat.edges), columns=['xs', 'ys']) #edges dataframe indexed by sellers names
+    edges_df['edges_couples'] = edges_couples
 
     if len(fields)>0:
         for f in fields: #this step assumes that the stats have been already created for the whole dataset
-            edges_df[f]=list([d.loc[(d[sellers_colname] == edges_df.iloc[k]['xs']) & (d[buyers_colname] == edges_df.iloc[k]['ys']), f].values[0] for k in range(len(edges_df))])
+            temp_df = pd.DataFrame(df.groupby([buyers_colname, sellers_colname]).sum()[f]>0)
+            new_df = pd.DataFrame({f: list(temp_df[f]), 'edges_couples':list(temp_df.index)})
+            edges_df = edges_df.merge(new_df, on='edges_couples')
 
     return edges_df
 
 
 
 
-def create_network(edges, nodes, nodes_size_range = (6,15)):
+def create_network(edges, nodes, nodes_size_range = (6,15),
+                   R=0.54, nperlayer=26, nodescircles=0.065):
     """
     This function will create the network structure using networkx. It will also modify edges and nodes datasets adding SNA related features.
     This is an auxiliar function of netowrk_info
@@ -168,14 +168,6 @@ def create_network(edges, nodes, nodes_size_range = (6,15)):
     # build the nx graph
     G=nx.Graph()
     G.add_edges_from(edges.edges_couples)
-    nodes_list = list(G.nodes)
-
-    idxs = []
-    for i in nodes_list:
-        idxs.append(nodes[nodes['Company_Name']==i].index[0])
-
-    #sorting with same graph order
-    nodes = nodes.iloc[idxs]
 
     #nodes analysis to define their centrality
     centrality = nx.degree_centrality(G) #centrality dictionary
@@ -185,6 +177,11 @@ def create_network(edges, nodes, nodes_size_range = (6,15)):
     max_size = nodes_size_range[1]
     min_size = nodes_size_range[0]
     nodes['size'] = np.around(np.interp(nodes['centrality'], (nodes['centrality'].min(), nodes['centrality'].max()), (min_size, max_size)),2)
+
+    #coordinates
+    pos = init_layout(G, nodes, R, nperlayer, nodescircles)
+    coordinates = [np.array(pos[j]) for j in nodes['Company_Name']]
+    nodes['coords'] = coordinates
 
     return G, edges, nodes
 
@@ -223,11 +220,12 @@ def nodes_post(nodes, edges, nodes_name_column, nodes_size_range = (6,15), nxk =
 def network_info(G, edges, nodes, nodes_size_range = (6,15), 
                  to_highlight = 'is_pastdue90', circularLayout = False):
     """
+    OUTDATED! Please use create_network instead
     This function will add information to edges and nodes dataset, as well as the graph, to prepare them for visualization.
     The output will be a networkx graph, an updated edges dataset and an updated nodes dataset.
     """
 
-    edges_tuples = [t for t in G.edges] #update with the actual number of edges after network building
+    edges_tuples = list(G.edges) #update with the actual number of edges after network building
 
     #nodes size
     max_size = nodes_size_range[1]
@@ -246,5 +244,63 @@ def network_info(G, edges, nodes, nodes_size_range = (6,15),
 
     return G, edges, nodes
 
+#CIRCULAR LAYOUT FUNCTIONS (Helpers for create_network)
+
+#position of the k-th point out of n total points place on layers circles around (xc,yc)
+#all circles have radius within maxlayeroffset from radius r
+#instead of specifying layers one may specify number of points per layer pperlayer
+
+def innercircle_vec(labels, r=.4, nlayers = 3, step=7, maxlayeroffset=.42, xc=0, yc=0):
+    """
+    This function create coordinate positions based on the primetable
+    """
+    
+    primetable = np.array([1,2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,59,61,67,71,73])
+
+    #position points labelled with labels on nlayers of circles around xc,yc
+    n = len(labels)
+    layeroffset = 0. if nlayers==1 else 2* maxlayeroffset / (nlayers-1)
+
+    #distribute the points on the layers proportional to layer radius
+    layernp=[int(np.floor(((n+nlayers)/(nlayers*r)) * (r + (i-(nlayers-1)/2)*layeroffset)))
+                  for i in range(nlayers)]
+    #print(layernp)
+    phi0 = np.random.random(len(layernp))*1.
+    pos={}
+    for k in range(n):
+        insidelayers = np.argwhere(np.cumsum(layernp) > k)
+        layeridx = insidelayers[0][0] #idx of layer k-th point is at
+        npt = layernp[layeridx]
+        step = min(primetable[[npt%p>0 for p in primetable]], key=lambda x:abs(x-(npt/3.5)))
+        rl = r + (layeridx - (nlayers-1)/2)*layeroffset
+        phi = 2*np.pi*k*step/npt + phi0[layeridx]
+        x = xc + rl * np.cos(phi)
+        y = yc + rl * np.sin(phi)
+        pos[labels[k]] = np.array([x,y])
+    return pos
+    
+    
+def init_layout(G, nodes, R=0.54, nperlayer=26, nodescircles=0.065):
+    """
+    This function creates a graph layout for visualization using innercicle_vec
+    """
+    #sellers
+    sellernames = pd.DataFrame(nodes.loc[nodes.Type == "seller",:]).\
+            sort_values(by="centrality", ascending=False).\
+            reset_index(drop=True)
+    pos = innercircle_vec(list(sellernames.Company_Name), r=R, nlayers=sellernames.shape[0]//nperlayer+1)
+
+    #buyers - around the first seller linked to them
+    for seller in list(sellernames.Company_Name):
+        blist = list(G.neighbors(seller))
+        bnotalloc = [b for b in blist if not b in pos.keys()]
+        
+        nb = len(bnotalloc)
+        if nb>0:
+            pos = dict(pos, 
+                   **innercircle_vec(bnotalloc, r=nodescircles+0.004*np.sqrt(nb//nperlayer), 
+                    nlayers=nb//nperlayer+1, maxlayeroffset=0.004*np.sqrt(nb//nperlayer), 
+                    xc=pos[seller][0], yc=pos[seller][1]))
+    return pos
 
 
