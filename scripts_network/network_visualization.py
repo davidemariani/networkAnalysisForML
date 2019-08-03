@@ -16,7 +16,7 @@ import datetime
 from datetime import date,datetime
 import math
 
-from network_modelling import create_network
+from scripts_network.network_modelling import create_network
 
 #networkx
 import networkx as nx
