@@ -38,46 +38,7 @@ from bokeh.models.widgets import Select, MultiSelect
 
 
 #TTQ colors dictionary
-TTQcolor = {
-    'font': '#353535',
-    'lightGrey':'#fafafa',
-    'borderColour' : '#707070',
-    'cream' : '#edece8',
-    'lightCream' : '#F8F7F7',
-    'background' : '#ffffff',
-    'link' : '#3B5A95',
-    'brightLink':'#FE4045',
-    'marketplaceOrange' : '#F6601E',
-    'warningRed' : '#ce130b',
-    'Salmon' : '#F1B096',
-    'victorian' : '#CEDFDD',
-    'cream' : '#EFEFDC',
-    'whiteGrey' : '#EDECE9',
-    'eightyGrey' : '#D1D0CF',
-    'blueGrey' : '#939EA9',
-    'sixtyGrey' : '#8E9494',
-    'navy' : '#143154',
-    'darkPurple' : '#323651',
-    'darkNavy' : '#0E2335',
-    'darkCyan' : '#0D2B2C',
-    'redBrown' : '#6B191E',
-    'richBrown': '#85372B',
-    'algae' : '#0E6930',
-    'mutedBlue' : '#496592',
-    'azureBlue' : '#155C8A',
-    'electric' : '#67BDCE',
-    'sky' : '#76B9D0',
-    'turq' : '#1A9E78',
-    'pea' : '#94CB91',
-    'ocean' : '#55B7BB',
-    'richOrange' : '#FB8C36',
-    'richPeach' : '#F66B53',
-    'yell' : '#F9EE16',
-    'yellowOrange' : '#F6BD4F',
-    'peach' : '#F2B097',
-    'bloodRed' : '#CD130B',
-    "PPTbg": '#19242F'
-  }
+from scripts_viz.visualization_utils import TTQcolor
 
 
 

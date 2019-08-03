@@ -7,7 +7,7 @@
 # Version      : 0.2                                                               #
 #==================================================================================#
 # This file contains general purpose visualization functions initially based on    #
-# bokeh (v.0.12.16). Recently updated to bokeh v.1.0.4                             #
+# bokeh v1.2.0                                                                     #
 #==================================================================================#
 
 import numpy as np

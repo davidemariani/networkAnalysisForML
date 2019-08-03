@@ -217,42 +217,20 @@ def nodes_post(nodes, edges, nodes_name_column, nodes_size_range = (6,15), nxk =
     return pos, sizes_dict
 
 
-def network_info(G, edges, nodes, nodes_size_range = (6,15), 
-                 to_highlight = 'is_pastdue90', circularLayout = False):
-    """
-    OUTDATED! Please use create_network instead
-    This function will add information to edges and nodes dataset, as well as the graph, to prepare them for visualization.
-    The output will be a networkx graph, an updated edges dataset and an updated nodes dataset.
-    """
-
-    edges_tuples = list(G.edges) #update with the actual number of edges after network building
-
-    #nodes size
-    max_size = nodes_size_range[1]
-    min_size = nodes_size_range[0]
-    nodes['size'] = np.around(np.interp(nodes['centrality'], (nodes['centrality'].min(), nodes['centrality'].max()), (min_size, max_size)),2)
-
-    #nodes nx attributes
-    node_size = dict([tuple(x) for x in nodes[['Company_Name', 'size']].values])
-    node_type = dict([tuple(y) for y in nodes[['Company_Name', 'Type_2']].values])
-
-    edges_highlight = dict(zip(edges_tuples, [edges.loc[(edges['xs'].isin(p)) & (edges['ys'].isin(p)), to_highlight].unique()[0] for p in edges_tuples]))
-
-    nx.set_node_attributes(G, name='size', values=node_size) 
-    nx.set_node_attributes(G, name='type', values=node_type)
-    nx.set_edge_attributes(G, name='highlight', values=edges_highlight)
-
-    return G, edges, nodes
-
 #CIRCULAR LAYOUT FUNCTIONS (Helpers for create_network)
 
 #position of the k-th point out of n total points place on layers circles around (xc,yc)
 #all circles have radius within maxlayeroffset from radius r
 #instead of specifying layers one may specify number of points per layer pperlayer
 
-def innercircle_vec(labels, r=.4, nlayers = 3, step=7, maxlayeroffset=.42, xc=0, yc=0):
+def innercircle_vec(labels, r=.4, nlayers = 3, maxlayeroffset=.42, xc=0, yc=0):
     """
-    This function create coordinate positions based on the primetable
+    This function create coordinate positions based on the primetable for visualizing the network of buyers and sellers
+    on a layout based on circles, where each seller is closer to the center of the plot on the basis of its centrality,
+    and the buyers connected to it tend to be in the surrounding circle.
+    It takes as attributes the series of object names to sort by centrality,
+    the size of the radius, the number of layers to create, the maximum offset between two layers,
+    the coordinates of the centre of the plot.
     """
     
     primetable = np.array([1,2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,59,61,67,71,73])
@@ -282,7 +260,10 @@ def innercircle_vec(labels, r=.4, nlayers = 3, step=7, maxlayeroffset=.42, xc=0,
     
 def init_layout(G, nodes, R=0.54, nperlayer=26, nodescircles=0.065):
     """
-    This function creates a graph layout for visualization using innercicle_vec
+    This function creates a graph layout for visualization using innercicle_vec.
+    It takes as attributes an undirected graph, the radius of the first circle,
+    the number of seller nodes per layer and the radius of the circles containing
+    the buyer nodes.
     """
     #sellers
     sellernames = pd.DataFrame(nodes.loc[nodes.Type == "seller",:]).\
@@ -304,3 +285,30 @@ def init_layout(G, nodes, R=0.54, nperlayer=26, nodescircles=0.065):
     return pos
 
 
+def network_info(G, edges, nodes, nodes_size_range = (6,15), 
+                 to_highlight = 'is_pastdue90', circularLayout = False):
+    """
+    OUTDATED! Please use create_network instead!
+
+    This function will add information to edges and nodes dataset, as well as the graph, to prepare them for visualization.
+    The output will be a networkx graph, an updated edges dataset and an updated nodes dataset.
+    """
+
+    edges_tuples = list(G.edges) #update with the actual number of edges after network building
+
+    #nodes size
+    max_size = nodes_size_range[1]
+    min_size = nodes_size_range[0]
+    nodes['size'] = np.around(np.interp(nodes['centrality'], (nodes['centrality'].min(), nodes['centrality'].max()), (min_size, max_size)),2)
+
+    #nodes nx attributes
+    node_size = dict([tuple(x) for x in nodes[['Company_Name', 'size']].values])
+    node_type = dict([tuple(y) for y in nodes[['Company_Name', 'Type_2']].values])
+
+    edges_highlight = dict(zip(edges_tuples, [edges.loc[(edges['xs'].isin(p)) & (edges['ys'].isin(p)), to_highlight].unique()[0] for p in edges_tuples]))
+
+    nx.set_node_attributes(G, name='size', values=node_size) 
+    nx.set_node_attributes(G, name='type', values=node_type)
+    nx.set_edge_attributes(G, name='highlight', values=edges_highlight)
+
+    return G, edges, nodes
