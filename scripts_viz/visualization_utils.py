@@ -25,6 +25,7 @@ from bokeh.models.glyphs import Text
 from numpy import histogram, linspace
 from scipy.stats.kde import gaussian_kde
 from bokeh.layouts import gridplot, column
+from bokeh.io import output_file
 
 #sklearn
 from sklearn.model_selection import cross_val_predict
@@ -312,7 +313,7 @@ def timeSeries(df, colors, title, plot_w=1800, plot_h =450, showY=True, rightY=F
     rows = list(df.index)
     
     range_min = min(df.iloc[0])
-    range_max = max(df.iloc[0]) + max(df.iloc[0])/10
+    range_max = max(df.iloc[0]) #+ max(df.iloc[0])/10
     
     #main figure settings
     ts = figure(plot_width =plot_w, plot_height =plot_h, x_range = labels, 
@@ -394,7 +395,8 @@ def stacked(df):
     df_stack = pd.concat([df_bottom, df_top], ignore_index=True)
     return df_stack
 
-def stackedChart(df, colors, plot_w=1800, plot_h=450, showY=True):
+def stackedChart(df, colors, plot_w=1800, plot_h=450, showY=True, xaxislabel='Year_month',
+                 xaxislabelorient = np.pi/4):
     """
     It produces a timeseries as stacked area charts, using the df rows as fields to visualize
     """
@@ -412,10 +414,10 @@ def stackedChart(df, colors, plot_w=1800, plot_h=450, showY=True):
     p.legend.location = "top_left"
     p.legend.click_policy="hide"
     
-    p.xaxis.axis_label = 'Year_month'
+    p.xaxis.axis_label = xaxislabel
     
     p.yaxis.visible = showY
-    p.xaxis.major_label_orientation = np.pi/4
+    p.xaxis.major_label_orientation = xaxislabelorient
     
     return p
 
