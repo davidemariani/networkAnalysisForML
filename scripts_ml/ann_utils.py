@@ -21,7 +21,7 @@ import math
 import time
 
 from sklearn.metrics import roc_curve, roc_auc_score, confusion_matrix
-from models_utils import *
+from scripts_ml.models_utils import *
 
 #importing TensorFlow
 import tensorflow as tf
