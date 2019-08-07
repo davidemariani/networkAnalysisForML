@@ -7,6 +7,7 @@
 # Version      : 0.2                                                               #
 #==================================================================================#
 # This file contains several functions to preprocess data for model feeding        #
+# using scikit-learn                                                               #
 #==================================================================================#
 
 import numpy as np
