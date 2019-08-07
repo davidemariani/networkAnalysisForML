@@ -28,7 +28,7 @@ import os
 #utils
 class Date2Num(BaseEstimator, TransformerMixin):
     """
-    Auxiliar class for scikit learn preprocessing module for converting datetimes to float
+    Auxiliar class for scikit learn preprocessing module for converting datetimes to ordinal
     """
     def __init__(self):
         return
