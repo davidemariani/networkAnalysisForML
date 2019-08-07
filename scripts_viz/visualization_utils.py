@@ -520,7 +520,7 @@ def radar_patch(r, theta, centre ):
 
 def spiderWebChart(legend_names, names, vals, colors, chart_name = '', 
                    subvids = 4, main_size = 0.5, normalize = False,
-                  perc_scale = False, fill_alpha=0.3): #,plot_height=220, plot_width=220):
+                  perc_scale = False, fill_alpha=0.3, text_size="8pt"): #,plot_height=220, plot_width=220):
     """
     This function plots a single spider web chart that overlap different sets of values (if more than one is provided).
     names: the name of each field to compare in the graph
@@ -572,7 +572,7 @@ def spiderWebChart(legend_names, names, vals, colors, chart_name = '',
 
     #adding labels
     labels = LabelSet(x="x",y="y",text="text",
-                      source=source, text_font_size="8pt", 
+                      source=source, text_font_size=text_size, 
                       #x_offset = -40, 
                       #y_offset = -10, 
                       angle = 'angle'
