@@ -21,6 +21,7 @@ import math
 from bokeh.plotting import figure
 from bokeh.models import LinearAxis, Range1d, SingleIntervalTicker, AdaptiveTicker, ColumnDataSource, FactorRange, LabelSet, HoverTool, Label, BoxZoomTool, ResetTool
 from bokeh.models.formatters import BasicTickFormatter
+from bokeh.models.widgets import DataTable, TableColumn
 from bokeh.models.glyphs import Text
 from numpy import histogram, linspace
 from scipy.stats.kde import gaussian_kde
@@ -507,7 +508,7 @@ def unit_poly_verts(theta, centre, radius=0.5):
     r = radius
     verts = [(r*np.cos(t) + x0, r*np.sin(t) + y0) for t in theta]
     return verts
-
+ 
 def radar_patch(r, theta, centre ):
     """ Returns the x and y coordinates corresponding to the magnitudes of 
     each variable displayed in the radar plot
@@ -518,9 +519,11 @@ def radar_patch(r, theta, centre ):
     xt = (r*centre + offset) * np.cos(theta) + centre 
     return xt, yt
 
-def spiderWebChart(legend_names, names, vals, colors, chart_name = '', 
+def spiderWebChart(legend_names, names, vals, colors, title = '', 
                    subvids = 4, main_size = 0.5, normalize = False,
-                  perc_scale = False, fill_alpha=0.3, text_size="8pt"): #,plot_height=220, plot_width=220):
+                  perc_scale = False, fill_alpha=0.3, text_size="8pt",
+                  p_width=500, p_height=500, legend_location = "top_left",
+                  margin_distance = 0.5): 
     """
     This function plots a single spider web chart that overlap different sets of values (if more than one is provided).
     names: the name of each field to compare in the graph
@@ -552,7 +555,8 @@ def spiderWebChart(legend_names, names, vals, colors, chart_name = '',
     #_tools_to_show = 'box_zoom,pan,save,hover,reset,tap,wheel_zoom'
     
     #figure
-    p = figure(title=chart_name, x_range=(-0.35,1.35), y_range=(-0.35,1.35)) #, tools= _tools_to_show)
+    p = figure(title=title, x_range=(-margin_distance,1+margin_distance), y_range=(-margin_distance,1+margin_distance),
+               plot_width = p_width, plot_height = p_height) #, tools= _tools_to_show)
     
     #main polygon line
     p.line(x="x", y="y", source=source)
@@ -573,8 +577,6 @@ def spiderWebChart(legend_names, names, vals, colors, chart_name = '',
     #adding labels
     labels = LabelSet(x="x",y="y",text="text",
                       source=source, text_font_size=text_size, 
-                      #x_offset = -40, 
-                      #y_offset = -10, 
                       angle = 'angle'
                      )
     p.add_layout(labels)
@@ -607,11 +609,8 @@ def spiderWebChart(legend_names, names, vals, colors, chart_name = '',
         source_tmp = ColumnDataSource({'x':xt, 'y':yt, 'values':flist[f]})
         p.patch(x='x', y='y', fill_alpha=fill_alpha, fill_color=colors[f], source=source_tmp, legend = legend_names[f])
 
-    #hover = p.select(dict(type=HoverTool))
-    #hover.tooltips = [('%', '@values')]
-    #p.add_tools(hover)
     
-    p.legend.location = "top_left"
+    p.legend.location = legend_location
     p.legend.click_policy="hide"
     
     p.xaxis.visible = False
@@ -632,7 +631,10 @@ def plot_rocs(metrics, label=None,
               exportpng = False,
               model_appendix = None,
               dark_background = False,
-              deepFprOnly = True,
+              deepFprOnly = False,
+              legend_font_size = '12pt',
+              fpr_font_size = '12pt',
+              legend_location = 'bottom_right',
               colors = [TTQcolor['azureBlue'], TTQcolor['richOrange']]): 
     """
     This function will create a ROC curve for each metric plugged in. The argument 'metrics' needs to be a list.
@@ -684,7 +686,8 @@ def plot_rocs(metrics, label=None,
 
     for idx, metric in enumerate(metrics):
         #roc curves
-        p.line(metric["fpr"], metric["tpr"], line_color = col[idx], line_width = 3, legend = label[idx]+model_appendix[idx]+' '+str(round(metric['auc'],2)))
+        p.line(metric["fpr"], metric["tpr"], line_color = col[idx], line_width = 3, 
+               legend = label[idx]+model_appendix[idx]+' - AUC: '+str(round(metric['auc'],2)))
         fpr80.append(np.interp([select_point], metric["tpr"], metric["fpr"])[0])
 
     #labels
@@ -709,7 +712,7 @@ def plot_rocs(metrics, label=None,
                       text = 'text_lab',
                       level = 'glyph',
                       source = label_source,
-                      text_font_size = '12pt',
+                      text_font_size = fpr_font_size,
                       x_offset = -20,
                       y_offset = -28,
                       render_mode = 'css',
@@ -721,11 +724,11 @@ def plot_rocs(metrics, label=None,
     p.circle(fpr80, select_point_list, size = 8, color = fpr80_pt_color)
 
     #legend
-    p.legend.location = 'bottom_right'
+    p.legend.location = legend_location
     p.legend.click_policy = 'hide'
     p.legend.background_fill_color = legend_background_color
     p.legend.label_text_color = legend_text_color
-    p.legend.label_text_font_size = '12pt'
+    p.legend.label_text_font_size = legend_font_size
 
     #output file
     if file_output:
@@ -780,3 +783,19 @@ def histfolds(models, metrics, vizdict, plot_h=250, plot_w=250, colors = [TTQcol
     p.xgrid.grid_line_color = None
 
     return p
+
+
+def modelSpreadsheet(viz_dict, metric_list, model_type, width=900, height=100, index_width=150):
+    """
+    This function place a spreadsheet containing model information for performance visualization in a bokeh plot
+    """
+
+
+    source = ColumnDataSource(data=dict())
+    rf_filter  = viz_dict.loc['model_type'] == model_type
+    source.data = {**{'model' : viz_dict.columns[rf_filter]}, **dict(zip(metric_list, [viz_dict.loc[m][rf_filter] for m in metric_list]))}
+    columns = [TableColumn(field=i, title=i) for i in source.data.keys()]
+
+    data_table = DataTable(source=source, columns=columns, width=1100, height=100, index_header=model_type, index_width=150)
+
+    return data_table
