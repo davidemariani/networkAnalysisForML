@@ -19,7 +19,7 @@ import math
 
 #bokeh
 from bokeh.plotting import figure
-from bokeh.models import LinearAxis, Range1d, SingleIntervalTicker, AdaptiveTicker, ColumnDataSource, LabelSet, HoverTool, Label, BoxZoomTool, ResetTool
+from bokeh.models import LinearAxis, Range1d, SingleIntervalTicker, AdaptiveTicker, ColumnDataSource, FactorRange, LabelSet, HoverTool, Label, BoxZoomTool, ResetTool
 from bokeh.models.formatters import BasicTickFormatter
 from bokeh.models.glyphs import Text
 from numpy import histogram, linspace
@@ -733,5 +733,50 @@ def plot_rocs(metrics, label=None,
     
     if exportpng:
         export_png(p, filename = 'ROC.png')
+
+    return p
+
+
+def histfolds(models, metrics, vizdict, plot_h=250, plot_w=250, colors = [TTQcolor['richOrange'], TTQcolor['azureBlue']],
+              title='', barwidth=0.95, xlabelorientation = 1):
+    """
+    This function will create a bokeh plot to visualize the AUC performances of each fold at validation stage.
+    It requires as inputs:
+    models: the name of the models
+    metrics: the name of the metrics to visualize as they are stated in the visualization dictionary
+    vizdict: a visualization dictionary
+    """
+
+    data = {'names':models}
+    for metric in metrics:
+        fold_metrics = []
+        for model in models:
+            fold_metrics.append(vizdict.loc[metric, model])
+        data[metric] = fold_metrics
+
+    
+    x = [ (mod, met) for mod in models for met in metrics ]
+
+    counts = []
+    for m in range(len(data[metrics[0]])):
+        for mm in metrics:
+            counts.append(data[mm][m])
+
+    colors_list = []
+    for cc in colors:
+        colors_list+=[cc]*len(metrics)
+
+    source = ColumnDataSource(data=dict(x=x, counts=counts, 
+                                        color=colors_list))
+    p = figure(x_range=FactorRange(*x), plot_height=plot_h, plot_width = plot_w, title=title,
+               toolbar_location=None, tools="")
+
+    p.vbar(x='x', top='counts', width=barwidth, source=source, color='color')
+
+    p.y_range.start = 0
+    p.y_range.end = 1
+    p.x_range.range_padding = 0.1
+    p.xaxis.major_label_orientation = xlabelorientation
+    p.xgrid.grid_line_color = None
 
     return p
