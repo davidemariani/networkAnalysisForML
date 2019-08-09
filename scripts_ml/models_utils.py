@@ -101,7 +101,13 @@ def save_sk_model(model, datafolder, model_name, prefix):
         month = '0'+month
     day = str(datetime.datetime.now().day)
 
-    postfix = '_'+year+month+day+'_'+str(datetime.datetime.now().hour)+str(datetime.datetime.now().minute)
+    hour = str(datetime.datetime.now().hour)
+
+    min = str(datetime.datetime.now().minute)
+
+    sec = str(datetime.datetime.now().second)
+
+    postfix = '_'+year+month+day+'_'+hour+min+sec
 
     filename = prefix +'_'+ model_name + postfix+'.pkl'
 
