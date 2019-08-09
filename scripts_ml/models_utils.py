@@ -43,7 +43,7 @@ def cm_ratio(cm):
 def model_diag(model, X_train, y_train, CrossValFolds=5, scoring = {'AUC':'roc_auc'}):
     """
     This function returns as output false positive rates, true positive rates and auc score for stratified kfold and each
-    cross validation forlds in the form of a dictionary.
+    cross validation fold in the form of a dictionary.
     It needs model, training x and training y as inputs.
     """
     
@@ -64,6 +64,67 @@ def model_diag(model, X_train, y_train, CrossValFolds=5, scoring = {'AUC':'roc_a
     for score in list(scoring.keys()):
         for fold in range(1, len(validation['test_'+score])+1): #saving auc score at each fold of cross validation
             results[score+'_fold_'+str(fold)] = validation['test_'+score][fold-1]
+
+    return results
+
+
+def model_diag_seq(model, X_train, y_train, train_window=6000, test_window=1200, scoring = {'AUC':'roc_auc'}):
+    """
+    This function returns as output false positive rates, true positive rates and auc score for time sequence fold validation
+    and each time split validation fold in the form of a dictionary.
+    It needs model, training x, training y and windows dimensions as inputs.
+    """
+    
+    T = X_train.shape[0]
+    if train_window<1: #given as share of T
+        train_window = np.floor(train_window*T)
+    if test_window<1:
+        test_window = np.floor(test_window*T)
+
+    fold_generator = rolling_window(T, train_window, test_window)
+
+    results = {}
+
+    preds = [] #lists for combining all the folds and evaluating overall performance
+    tests = []
+
+    #split set in timewise folds
+    for count, train_idx, test_idx, Nsteps in fold_generator:
+        train_idx = train_idx.astype(int)
+        test_idx = test_idx.astype(int)
+        X_fold_train = X_train[train_idx]
+        y_fold_train = y_train[train_idx]
+        X_fold_test = X_train[test_idx]
+        y_fold_test = y_train[test_idx]
+
+        print(train_idx)
+        print(test_idx)
+
+        print("Fold {:}: train  on {:} from index {:} to {:}, test on {:} from {:} to {:}".format(count,
+                        len(X_fold_train), train_idx[0], train_idx[-1], len(X_fold_test), test_idx[0], test_idx[-1]))
+
+        model.fit(X_fold_train, y_fold_train)
+    
+        if hasattr(model, "decision_function"): #cross_val_predict is used to make predictions on each data point using stratified folds (evaluation of the whole set)
+            y_scores = model.decision_function(X_fold_test) 
+        else:
+            y_proba = model.predict_proba(X_fold_test)
+            y_scores = y_proba[:,1]
+
+        auc = roc_auc_score(y_fold_test, y_scores)
+
+        results['AUC_fold_'+str(count)] = auc
+        results['fold_idxs'] = (train_idx, test_idx) #recording train and test indexes as reference
+        preds+=list(y_scores)
+        tests+=list(y_fold_test)
+    
+    fpr, tpr, thresholds = roc_curve(tests, preds) #false positive rates, true positive rates and thresholds
+    auc = roc_auc_score(tests, preds)
+    print("AUC {:.3f}".format(auc))
+
+    results['fpr'] = fpr
+    results['tpr'] = tpr
+    results['auc'] = auc
 
     return results
 
@@ -143,32 +204,45 @@ def rolling_window(T, ntrain, ntest):
     """
     This function executes a generator for performing 'rolling window validation', in which a sliding portion of the training
     set is used  instead of classical k-fold validation.
-    It asks for the
-    Nsteps = (T - ntrain) // ntest #rounded down number of folds
-    starti = 0 #running first index of training set
-    
-    for count in range(Nsteps):
-        traini = np.array(range(starti, T - (Nsteps-count)*ntest)) #may be longer than ntrain for count==0
-        testi = np.array(range(T - (Nsteps-count)*ntest, T - (Nsteps-count)*ntest + ntest))
-        starti = T - (Nsteps-count-1)*ntest - ntrain
-        yield count, traini, testi, Nsteps
+    It asks for the size of the training set, the (indicative) number of training observation for each time fold and the number of test observations
+    for each time fold.
+    The generator will yield fold-count number, train indexes and test indexes 
     """
+
+    Nsteps = (T - ntrain) // ntest #rounded down number of folds
+
+    starti = 0 #running first index of training set
+
+    for count in range(int(Nsteps)): #for each fold
+        traini = np.array(range(int(starti), int(T - (Nsteps-count)*ntest))) #may be longer than ntrain for count==0
+        testi = np.array(range(int(T - (Nsteps-count)*ntest), int(T - (Nsteps-count)*ntest + ntest)))
+        starti = int(T - (Nsteps-count-1)*ntest - ntrain)
+
+        print("Preparing fold {} with start at {}, {} train observations and {} test observations...".format(count, starti, len(traini), len(testi)))
+
+        yield count, traini, testi, Nsteps
+    
 
 
 def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata', testfile='_testdata', scoring = {'AUC':'roc_auc'},
-                CrossValFolds=5, save_model=False, models_path='../data/models/', mlf_tracking=False, experiment_name='experiment',
+                CrossValFolds=5, timeSeqValid = False, train_window = 6000, test_window = 1200, 
+                save_model=False, models_path='../data/models/', mlf_tracking=False, experiment_name='experiment',
                 save_results_for_viz=False, viz_output_path='../data/viz_data/'):
     """
     This function's main purpose is the comparison between validation and testing in order to tune the model during calibration.
     It performs training, validation and testing of one or more models on one or more credit events, requiring as inputs:
-    - a list of models
-    - the path of the folder containing train and test files generated by the preprocessing pipeline
-    - the prefix for each of them (list)
-    - the postfixes for each of them (list)
-    - traindata and testdata name are default
-    - dictionary with the scoring methods for cross validation
-    - number of folds for cross validation phase
-    - option to save the model, give it an output path and model name
+    - models: a list of models
+    - datafolder: the path of the folder containing train and test files generated by the preprocessing pipeline
+    - prefixes: the prefix for each of them (list)
+    - postfixes: the postfixes for each of them (list)
+    - trinfile and testfile: traindata and testdata name are default
+    - scoring: dictionary with the scoring methods for cross validation
+    - CrossValFolds: number of folds for cross validation phase
+    - timeSeqValid: if True, time sequence validation will be performed (this has to be done after a TIME SPLIT PREPROCESSING otherwise it doesn't make sense!
+      Please be sure that the experiment name contain 'time'!!!)
+    - train_window: size of the training window  (this works for timeSeqValid=True)
+    - test_window: size of the testing window (this works for timeSeqValid=True)
+    - save_model: option to save the model, give it an output path and model name
     - option to save AUC visualization data as pickles in specific folder
     - option of tracking the experiments in mlflow
 
@@ -221,7 +295,11 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
 
             #validation performance
             print('- Validation...')
-            model_kfold = model_diag(model, X_train, y_train, CrossValFolds=CrossValFolds, scoring=scoring)
+            if timeSeqValid:
+                model_kfold = model_diag_seq(model, X_train, y_train, 
+                                             train_window=train_window, test_window=test_window, scoring=scoring)
+            else:
+                model_kfold = model_diag(model, X_train, y_train, CrossValFolds=CrossValFolds, scoring=scoring)
             results['validation'] = model_kfold
 
             #testing on out of sample observations
@@ -288,9 +366,17 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
                     mlflow.log_metric("validation_nfolds", CrossValFolds)
                     mlflow.log_metric("val_auc", auc_kf_general)
 
-                    for fold in range(1,CrossValFolds+1):
-                        auc_kf_fold = round(model_kfold['AUC_fold_'+str(fold)],3)
-                        mlflow.log_metric("val_auc_fold_"+str(fold), auc_kf_fold)
+                    if not timeSeqValid:
+                        for fold in range(1,CrossValFolds+1):
+                            auc_kf_fold = round(model_kfold['AUC_fold_'+str(fold)],3)
+                            mlflow.log_metric("val_auc_fold_"+str(fold), auc_kf_fold)
+                    else:
+                        count=0
+                        for fold in model_kfold.keys():
+                            count+=1
+                            if 'AUC_fold_' in fold:
+                                auc_seq_fold = round(model_kfold[fold],3)
+                            mlflow.log_metric("val_auc_fold_"+str(count), auc_seq_fold)
 
                     #test metrics tracking
                     auc = round(model_oos['auc'],3)
