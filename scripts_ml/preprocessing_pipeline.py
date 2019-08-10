@@ -20,8 +20,8 @@ from sklearn.impute import SimpleImputer
 from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn_pandas import DataFrameMapper, gen_features
-import itertools
-import sys
+#import itertools
+#import sys
 import os
 
 
@@ -180,7 +180,7 @@ def shuffle_train_test(df, trainsize, testsize, testset_control_feature):
 
 def time_train_test(df, testset_control_feature, testdate):
     """
-    This function, given a dataset, train and test size and a time control feature, will return train set and test set
+    This function, given a datasetand a time control feature, will return train set and test set
     based on the initial dataset split by a date for which all the instruments before that date will form the train set,
     while all the instrument past that date will form the test set.
     """
@@ -191,6 +191,22 @@ def time_train_test(df, testset_control_feature, testdate):
     train_all = df.loc[df[testset_control_feature] <  testdate]
     print("  {:}({:.1f}%) train, {:}({:.1f}%) test".format(train_all.shape[0], 100*train_all.shape[0]/df.shape[0],
                                                             test_all.shape[0],   100*test_all.shape[0]/df.shape[0]))
+
+    return train_all, test_all
+
+
+
+def idx_train_test(df, testset_control_feature, train_idx, test_idx):
+    """
+    This function, given a dataset, train indexes and test indexes, will return train set and test set
+    """
+
+    print("Splitting train and test sets by indexes...")
+
+    test_set  = df.iloc[test_idx]
+    train_set = df.iloc[train_idx]
+    print("  {:}({:.1f}%) train, {:}({:.1f}%) test".format(train_set.shape[0], 100*train_set.shape[0]/df.shape[0],
+                                                            test_set.shape[0],   100*test_set.shape[0]/df.shape[0]))
 
     return train_all, test_all
 
@@ -280,5 +296,9 @@ def preprocessing_pipeline(df, feat_str, feat_quant, feat_exp, feat_date, target
         save_preproc_files(outputfolder, prefix1+prefix, preproc_pipeline, y_train, X_train, y_test, X_test, feature_labels)
 
     return y_train, X_train, y_test, X_test, feature_labels
+
+
+def preproc_pipeline_bg_val():
+    pass
 
 
