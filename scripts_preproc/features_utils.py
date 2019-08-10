@@ -234,3 +234,13 @@ def add_node_stats(inst, igroup, idx, id, ii, prefix, decision_date_col="value_d
     #adding payment_date_mismatch stats
     inst.loc[id, prefix_read+prefix+"pd_mismatch_mean"] = igroup.loc[repaid, prefix_read+"payment_date_mismatch"].agg("mean")
     inst.loc[id, prefix_read+prefix+"pd_mismatch_std"] = igroup.loc[repaid, prefix_read+"payment_date_mismatch"].agg("std") 
+
+#-----------------------------------------
+# MAIN
+#-----------------------------------------
+
+def main():
+    print("features_utils.py executed/loaded..")
+
+if __name__ == "__main__":
+    main()
