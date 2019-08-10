@@ -113,6 +113,10 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
             model_oos = model_oostest(model, X_test, y_test)
             results['testing'] = model_oos
 
+            #retrieving model's feature importances
+            f_imp = get_features_importances(model, feature_labels)
+            results['feature_importances'] = f_imp
+
             #saving the model
             if save_model:
                 output_path = models_path+experiment_name+'/'
@@ -130,7 +134,7 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
             if mlf_tracking: #mlflow tracking
 
                 mlf_sk_tracking(experiment_name, prefix, postfix, modeltype, trainfile, testfile, datafolder,
-                    X_train.shape[0], X_test.shape[0], model, model_kfold, model_oos, timeSeqValid, CrossValFolds, 
+                    X_train.shape[0], X_test.shape[0], model, model_kfold, model_oos, timeSeqValid, f_imp, CrossValFolds, 
                     save_model=False, filename=None, filepath=None, save_results_for_viz=save_results_for_viz, dict_name=dict_name)
 
             print()
@@ -141,13 +145,15 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
 # VALIDATION METHODS UTILS
 #-----------------------------------------
 
-def rolling_window(T, ntrain, ntest):
+def rolling_window(T, ntrain, ntest, gen_for_grid_search=False):
     """
     This function executes a generator for performing 'rolling window validation', in which a sliding portion of the training
     set is used  instead of classical k-fold validation.
     It asks for the size of the training set, the (indicative) number of training observation for each time fold and the number of test observations
     for each time fold.
-    The generator will yield fold-count number, train indexes and test indexes 
+    The generator will yield fold-count number, train indexes and test indexes.
+    Setting gen_for_grid_search to True will make the generator yielding just train indexes and test indexes; this is useful when using gridsearch
+    for hyperparameters tuning in scikit learn, creating customized validation options with the attribute 'cv'.
     """
 
     Nsteps = (T - ntrain) // ntest #rounded down number of folds
@@ -161,7 +167,10 @@ def rolling_window(T, ntrain, ntest):
 
         print("Preparing fold {} with start at {}, {} train observations and {} test observations...".format(count, starti, len(traini), len(testi)))
 
-        yield count, traini, testi, Nsteps
+        if gen_for_grid_search: #option for 'cv' in grid_search
+            yield traini, testi
+        else:
+            yield count, traini, testi, Nsteps
 
 
 #-----------------------------------------
@@ -299,6 +308,28 @@ def cm_ratio(cm):
     return rcm
 
 
+def get_features_importances(trained_model, feature_labels):
+    """
+    This functions, given a trained model and the labels of the features used to train it,
+    will return a dictionary with the weights (for linear models) or the importance (for tree models)
+    for every feature
+    """
+
+    feat_imp = {}
+
+    if hasattr(trained_model, "feature_importances_"):
+        importances = trained_model.feature_importances_
+    
+    elif hasattr(trained_model, "coef_"):
+        importances = trained_model.coef_[0]
+
+    else:
+        print("None of the weights/importance module found...")
+        return feat_imp
+
+    feat_imp = dict(zip(feature_labels, importances))
+    return feat_imp
+
 #-----------------------------------------
 # DATA AND MODEL SAVING UTILS
 #-----------------------------------------
@@ -368,7 +399,8 @@ def save_dictionary(dict, datafolder, dict_name, postfix):
 #-----------------------------------------
 
 def mlf_sk_tracking(experiment_name, prefix, postfix, modeltype, trainfile, testfile, datafolder,
-                    train_size, test_size, model, model_kfold, model_oos, timeSeqValid, CrossValFolds=None, save_model=False, filename=None, filepath=None,
+                    train_size, test_size, model, model_kfold, model_oos, timeSeqValid, feat_imp_dict,
+                    CrossValFolds=None, save_model=False, filename=None, filepath=None,
                     save_results_for_viz=False, dict_name=None):
     """
     This function is an auxiliar function of models_loop which activates the mlflow tracking of an experiment
@@ -387,6 +419,7 @@ def mlf_sk_tracking(experiment_name, prefix, postfix, modeltype, trainfile, test
     - model_kfold: the output of the model_diag or model_diag_seq used during the experiment (dict)
     - model_oos: the output of out of sample testing used during the experiment (dict)
     - timeSeqValid: boolean value indicating if sequential validation has been used
+    - feat_imp_dict: a dictionary containing the feature importances
     - save_model: boolean indicating if the model has been stored somewhere
     - filename: the name of the model
     - filepath: the path where the model has been saved
@@ -478,6 +511,11 @@ def mlf_sk_tracking(experiment_name, prefix, postfix, modeltype, trainfile, test
         mlflow.log_metric("test_fp", fp) #false positive rate
         mlflow.log_metric("test_fn", fn) #false negative ratee
         mlflow.log_metric("test_tn", tn) #true negative rate
+
+
+        #features importances tracking
+        for f in feat_imp_dict.keys():
+            mlflow.log_metric("f_"+f, feat_imp_dict[f])
 
         #MODEL STORAGE
         #storing the model file as pickle
