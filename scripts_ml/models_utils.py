@@ -226,9 +226,6 @@ def model_diag_seq(model, X_train, y_train, train_window=6000, test_window=1200,
         X_fold_test = X_train[test_idx]
         y_fold_test = y_train[test_idx]
 
-        print(train_idx)
-        print(test_idx)
-
         print("Fold {:}: train  on {:} from index {:} to {:}, test on {:} from {:} to {:}".format(count,
                         len(X_fold_train), train_idx[0], train_idx[-1], len(X_fold_test), test_idx[0], test_idx[-1]))
 
@@ -344,7 +341,7 @@ def save_sk_model(model, datafolder, model_name, prefix):
     if not os.path.exists(datafolder):
         os.mkdir(datafolder)
 
-    print("Saving model to {}".format(filepath))
+    print("- Saving model to {}".format(filepath))
     with open(filepath, "wb") as pickle_file:
             pickle.dump(model, pickle_file)
 
@@ -361,7 +358,7 @@ def save_dictionary(dict, datafolder, dict_name, postfix):
     if not os.path.exists(datafolder):
         os.mkdir(datafolder)
 
-    print("Saving dictionary to {}".format(filepath))
+    print("- Saving dictionary to {}".format(filepath))
     with open(filepath, "wb") as pickle_file:
             pickle.dump(dict, pickle_file)
     return filepath
