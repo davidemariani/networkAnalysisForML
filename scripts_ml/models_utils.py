@@ -72,6 +72,8 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
 
         for loop in range(len(models)):
 
+            print("----Loop {} of {} for credit event {}----".format(loop+1, len(models), prefixes[p]))
+
             #results storage dictionary
             results = {'experiment':experiment_name,
                        'prefix':prefix,
@@ -95,18 +97,18 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
             [X_train, y_train, feature_labels] = pd.read_pickle(trainfilepath) 
             [X_test, y_test, feature_labels] = pd.read_pickle(testfilepath) 
 
-            #fitting model
-            print('- Training...')
-            model.fit(X_train, y_train)
-
             #validation performance
-            print('- Validation...')
+            print('- Training/Validation...')
             if timeSeqValid:
                 model_kfold = model_diag_seq(model, X_train, y_train, 
                                              train_window=train_window, test_window=test_window, scoring=scoring)
             else:
                 model_kfold = model_diag(model, X_train, y_train, CrossValFolds=CrossValFolds, scoring=scoring)
             results['validation'] = model_kfold
+
+            #fitting model
+            print('- Training for test...')
+            model.fit(X_train, y_train)
 
             #testing on out of sample observations
             print('- Testing...')
@@ -138,6 +140,7 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
                     save_model=False, filename=None, filepath=None, save_results_for_viz=save_results_for_viz, dict_name=dict_name)
 
             print()
+    print("Experiment done!")
     return results
         
 
@@ -183,14 +186,15 @@ def model_diag(model, X_train, y_train, CrossValFolds=5, scoring = {'AUC':'roc_a
     cross validation fold in the form of a dictionary.
     It needs model, training x and training y as inputs.
     """
-    
+
     validation = cross_validate(model, X_train, y_train, cv=CrossValFolds, scoring=scoring) #cross_validate is used to evaluate each fold separately
-    
+
     if hasattr(model, "decision_function"): #cross_val_predict is used to make predictions on each data point using stratified folds (evaluation of the whole set)
         y_scores = cross_val_predict(model, X_train, y_train, cv=CrossValFolds, method="decision_function")
     else:
         y_proba = cross_val_predict(model, X_train, y_train, cv=CrossValFolds, method="predict_proba")
         y_scores = y_proba[:,1]
+
     fpr, tpr, thresholds = roc_curve(y_train, y_scores) #false positive rates, true positive rates and thresholds
     auc = roc_auc_score(y_train, y_scores)
     
