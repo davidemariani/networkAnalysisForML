@@ -425,7 +425,6 @@ def preproc_pipeline_timeseq(df, feat_str, feat_quant, feat_exp, feat_date, targ
         full_test_window_df = train_all.iloc[:test_idx[-1]+1]
 
         #for df train the last train index is considered
-        #df_train = train_all.iloc[train_idx]
         full_train_window_df = train_all.iloc[:train_idx[-1]+1]
 
         count_2 = 0
