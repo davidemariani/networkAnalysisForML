@@ -341,6 +341,12 @@ def preproc_pipeline_timeseq(df, feat_str, feat_quant, feat_exp, feat_date, targ
                              whole_network_with_bg_file_path = "../data/04_instrumentsdf_bondgraph.pkl",
                              save_to_file=False, outputpath="../data/", prefix='', decompose_currency=False):
     """
+    This function generate a training set and a test set rebuilding for each of them the bond graph features, preventing the time leak problem.
+    It also generates a number of folds specified with the rolling_window function (which requires train and test windows size) recreating the same
+    feature for each of them following the same logic (this is useful for the calibration phase, and to prevent time leak in validation).
+    It requires a dataframe (the one not having bond graph features yet), the various types of features as per preprocessing_pipeline function,
+    a target feature depending on the credit event to predict, a testset_control_feature, experiment name.
+    bg_settings_dicts is a list of dictionary containing the settings for the add_bg_features function which generates the bond graph features.
     """
 
     df = df.copy()
@@ -407,6 +413,7 @@ def preproc_pipeline_timeseq(df, feat_str, feat_quant, feat_exp, feat_date, targ
     y_valid_train = []
     X_valid_test = []
     y_valid_test = []
+    full_test_window_df_bg = pd.DataFrame()
 
     for count, train_idx, test_idx, Nsteps in fold_generator: #rolling window applied to training dataset for calibration
         print("---------Train test for validation fold {}-----------".format(count))
@@ -416,23 +423,41 @@ def preproc_pipeline_timeseq(df, feat_str, feat_quant, feat_exp, feat_date, targ
         #for creating test df, the whole network before the last test idx needs to be generated and used as input for bg extraction
         full_test_window_idx = np.concatenate([train_idx, test_idx], axis=None) #index of the train window + test window
         full_test_window_df = train_all.iloc[:test_idx[-1]+1]
-        full_test_window_df_bg = full_test_window_df.copy()
 
         #for df train the last train index is considered
-        df_train = train_all.iloc[train_idx]
+        #df_train = train_all.iloc[train_idx]
         full_train_window_df = train_all.iloc[:train_idx[-1]+1]
-        full_train_window_df_bg = full_train_window_df.copy()
 
         count_2 = 0
-        for set_dict in bg_settings_dicts:
-            count_2+=1
+        if count==0:
 
-            print("---------Adding bond graph features {} of {} to TRAIN SET for fold {}-----------".format(count_2, len(bg_settings_dicts), count))
-            full_train_window_df_bg = add_bg_features(**{**{'df':full_train_window_df_bg}, **set_dict})
+            full_test_window_df_bg = full_test_window_df.copy()
 
-            print("---------Adding bond graph features {} of {} to TEST SET for fold {}-----------".format(count_2, len(bg_settings_dicts), count))
-            full_test_window_df_bg = add_bg_features(**{**{'df':full_test_window_df_bg}, **set_dict})
+            full_train_window_df_bg = full_train_window_df.copy()
 
+            for set_dict in bg_settings_dicts:
+                count_2+=1
+                print("---------Adding bond graph features {} of {} to TRAIN SET for fold {}-----------".format(count_2, len(bg_settings_dicts), count))
+                full_train_window_df_bg = add_bg_features(**{**{'df':full_train_window_df_bg}, **set_dict})
+
+                print("---------Adding bond graph features {} of {} to TEST SET for fold {}-----------".format(count_2, len(bg_settings_dicts), count))
+                full_test_window_df_bg = add_bg_features(**{**{'df':full_test_window_df_bg}, **set_dict})
+
+        else: #the test set bond features are created using all the data before the last date contained in the test set itself
+              #the train set of the next step will run until that same date for the "sliding window logic"
+              #this means that we can directly use the previous fold test set bond graph features for the current fold train set
+
+            print("---------Using test df for bond graph features from fold {} to create TRAIN SET for fold {}-----------".format(count-1, count))
+            full_train_window_df_bg = full_test_window_df_bg #add_bg_features(**{**{'df':full_train_window_df_bg}, **set_dict})
+            print("Checking train set shape: {}".format(full_train_window_df_bg.shape))
+
+            full_test_window_df_bg = full_test_window_df.copy()
+            for set_dict in bg_settings_dicts:
+                count_2+=1
+                print("---------Adding bond graph features {} of {} to TEST SET for fold {}-----------".format(count_2, len(bg_settings_dicts), count))
+                full_test_window_df_bg = add_bg_features(**{**{'df':full_test_window_df_bg}, **set_dict})
+
+        print("----------SHAPE SANITY CHECK--------")
         df_train = full_train_window_df_bg.iloc[train_idx]
         print("Training dataset shape before preprocessing pipeline: {}".format(df_train.shape))
         df_test = full_test_window_df_bg.iloc[test_idx] 

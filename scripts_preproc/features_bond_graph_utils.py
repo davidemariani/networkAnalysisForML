@@ -68,10 +68,10 @@ def add_bg_features(df, col_to_calc_effort, effort_col, flow_col, col_to_calc_fl
         df[flow_col] = [edge_flow[(df.loc[i, seller_col], df.loc[i, buyer_col])] for i in df.index]
     else: #this is for delays
         edge_flow = df[col_to_calc_flow]
+        df[flow_col] = edge_flow
 
     df[effort_col] = [edge_effort[(df.loc[i, seller_col], df.loc[i, buyer_col])] for i in df.index]
     
-
     df[effort_col] = df[effort_col].replace([np.inf, -np.inf, np.nan], 0)
     df[flow_col] = df[flow_col].replace([np.inf, -np.inf, np.nan], 0)
 
