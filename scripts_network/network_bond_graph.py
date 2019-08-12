@@ -100,30 +100,46 @@ def create_directed_graphs(components, df, red_coeff, energy='imp_energy'):
     """
     
     dir_graphs=[]
+
+    #calculating flow value on the whole network
+    df_whole_temp = df.copy()
+    df_whole_temp['capacity'] = round(df[energy].unique()[0]/(red_coeff),3)
+    df_whole_temp['weight'] = abs(round(red_coeff/df_whole_temp['capacity'],3))
     
     for comp in components:
-        di_g = nx.DiGraph()
+         
+         df_temp = df_whole_temp[df_whole_temp.customer_name_1.isin(comp)]
 
-        for cus in df.loc[df.customer_name_1.isin(comp), 'customer_name_1'].unique():
-            df_tmp = df[df.customer_name_1==cus]
+         di_g = nx.from_pandas_edgelist(df_temp,
+                                        source = 'debtor_name_1',
+                                        target = 'customer_name_1',
+                                        edge_attr=['capacity', 'weight'],
+                                        create_using = nx.DiGraph())
+
+         dir_graphs.append(di_g)
+
+    #    di_g = nx.DiGraph()
+
+    #    for cus in df.loc[df.customer_name_1.isin(comp), 'customer_name_1'].unique():
+    #        df_tmp = df[df.customer_name_1==cus]
 
 
-            for debt in df_tmp['debtor_name_1'].unique():
+    #        for debt in df_tmp['debtor_name_1'].unique():
 
-                if cus!=debt: #avoiding self-loops
+    #            if cus!=debt: #avoiding self-loops
 
-                    df_tmp2 = df_tmp[df_tmp.debtor_name_1==debt]
-                    flow = round(df_tmp2[energy].unique()[0]/(red_coeff),3)
+    #                df_tmp2 = df_tmp[df_tmp.debtor_name_1==debt]
+    #                flow = round(df_tmp2[energy].unique()[0]/(red_coeff),3)
 
-                    if flow<1:
-                        flow=1
-                        weight_=red_coeff
-                    else:
-                        weight_ = abs(round(red_coeff/flow,3))
+    #                if flow<1:
+    #                    flow=1
+    #                    weight_=red_coeff
+    #                else:
+    #                    weight_ = abs(round(red_coeff/flow,3))
 
-                    di_g.add_edge(debt, cus,capacity=int(flow), weight=int(weight_))
+    #                di_g.add_edge(debt, cus,capacity=int(flow), weight=int(weight_))
 
-        dir_graphs.append(di_g)
+        
     
     return dir_graphs
 
