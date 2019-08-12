@@ -115,7 +115,7 @@ class SignLogScaler(BaseEstimator, TransformerMixin):
         return X1
 
 
-def features_pipeline(feat_str, feat_quant, feat_exp, feat_date):
+def features_pipeline(feat_str=[], feat_quant=[], feat_exp=[], feat_date=[]):
     """
     This function, given the lists of different type of features, returns a scikit learn preprocessing pipeline
     ready to be used with the modeule 'transform'
@@ -126,7 +126,7 @@ def features_pipeline(feat_str, feat_quant, feat_exp, feat_date):
     feat_exp = [[k] for k in feat_exp]
     feat_date = [[l] for l in feat_date]
 
-    #pipelines
+    #pipelines 
     trans_date = gen_features(columns = feat_date,
                               classes = [{'class': Date2Num},
                                          {'class': CapOutliers, 'Maxstd': 4},
@@ -161,9 +161,14 @@ def shuffle_train_test(df, trainsize, testsize, testset_control_feature):
 
     df = df.copy()
 
-    print("Dropping {} instruments that are not due...".format(len(df[~df['is_due']])))
-    df = df.copy()
-    df = df[df.is_due]
+    #drop all instruments that are not due yet, since they can't be labelled
+    print("{:} instruments that are not due yet, dropping...".format(sum(~df.is_due)))
+    df=df.loc[df.is_due, :]
+    print("{:} instruments remaining".format(df.shape[0]))
+
+    #fixing train and test size
+    trainsize = int(df.shape[0]*trainsize)
+    testsize = int(df.shape[0]*testsize)-1
 
     print("Sampling {:} for train and {:} for test sets by shuffling...".format(trainsize, testsize))
 
@@ -194,9 +199,10 @@ def time_train_test(df, testset_control_feature, testdate):
 
     df = df.copy()
 
-    print("Dropping {} instruments that are not due...".format(len(df[~df['is_due']])))
-    df = df.copy()
-    df = df[df.is_due]
+    #drop all instruments that are not due yet, since they can't be labelled
+    print("{:} instruments that are not due yet, dropping...".format(sum(~df.is_due)))
+    df=df.loc[df.is_due, :]
+    print("{:} instruments remaining".format(df.shape[0]))
 
     print("Splitting train and test sets by time, test cutoff: {:}...".format(testdate))
 
@@ -216,9 +222,10 @@ def idx_train_test(df, testset_control_feature, train_idx, test_idx):
 
     df = df.copy()
 
-    print("Dropping {} instruments that are not due...".format(len(df[~df['is_due']])))
-    df = df.copy()
-    df = df[df.is_due]
+    #drop all instruments that are not due yet, since they can't be labelled
+    print("{:} instruments that are not due yet, dropping...".format(sum(~df.is_due)))
+    df=df.loc[df.is_due, :]
+    print("{:} instruments remaining".format(df.shape[0]))
 
     print("Splitting train and test sets by indexes...")
 
@@ -288,12 +295,21 @@ def save_preproc_files(outputfolder, prefix, preproc_pipeline, y_train, X_train,
 
 
 def preprocessing_pipeline(df, feat_str, feat_quant, feat_exp, feat_date, target_feature, testset_control_feature, experimentname, timewise = False,  
-                           trainsize=None, testsize=None, testdate=datetime.datetime(2018, 4, 30), save_to_file=False, outputpath="../data/", prefix=''):
+                           trainsize=None, testsize=None, testdate=datetime.datetime(2018, 4, 30), save_to_file=False, outputpath="../data/", prefix='',
+                           decompose_currency=False):
     """
     This function execute the whole preprocessing pipeline on a given dataframe, allowing the choice between timewise splitting and 
     shuffle splitting of the dataset between train and test with the boolean parameter 'timewise'.
     The function will save the files as pickle and return y train and test, x train and test and feature labels list.
     """
+
+    df = df.copy()
+
+    if decompose_currency:
+        print("Forcing currency column to multiple columns with boolean values...")
+        for c in df.currency.unique():
+            df['currency_'+str(c)] = df['currency']==c
+
     preproc_pipeline = features_pipeline(feat_str, feat_quant, feat_exp, feat_date)
 
     prefix1 = '' #placeholder for dynamic prefix
@@ -323,10 +339,19 @@ def preprocessing_pipeline(df, feat_str, feat_quant, feat_exp, feat_date, target
 def preproc_pipeline_timeseq(df, feat_str, feat_quant, feat_exp, feat_date, target_feature, testset_control_feature, experimentname, 
                              bg_settings_dicts, testdate=datetime.datetime(2018, 4, 30), train_window=12000, test_window=3000, #indexWise = False, 
                              whole_network_with_bg_file_path = "../data/04_instrumentsdf_bondgraph.pkl",
-                             save_to_file=False, outputpath="../data/", prefix=''):
+                             save_to_file=False, outputpath="../data/", prefix='', decompose_currency=False):
     """
     """
+
+    df = df.copy()
+
     prefix1 = 'time_'+str(testdate).split(' ')[0]+'_'
+
+    if decompose_currency:
+        print("Decomposing currency column to multiple columns with boolean values...")
+        for c in df.currency.unique():
+            df['currency_'+str(c)] = df['currency']==c
+
     preproc_pipeline = features_pipeline(feat_str, feat_quant, feat_exp, feat_date)
 
     print("---------Macro train split-----------")
@@ -343,6 +368,11 @@ def preproc_pipeline_timeseq(df, feat_str, feat_quant, feat_exp, feat_date, targ
     #test split with all bg features
     print("---------Macro test split-----------")
     full_df = pd.read_pickle(whole_network_with_bg_file_path)
+    if decompose_currency:
+        print("Decomposing currency column from full dataset to multiple columns with boolean values...")
+        for c in full_df.currency.unique():
+            full_df['currency_'+str(c)] = full_df['currency']==c
+
     test_all = time_train_test(full_df, testset_control_feature, testdate)[1]
 
     print("---------Pipeline application-----------")
@@ -416,7 +446,7 @@ def preproc_pipeline_timeseq(df, feat_str, feat_quant, feat_exp, feat_date, targ
         else:
             feature_labels_current_check = set(feature_labels)
             if feature_labels_check != feature_labels_current_check:
-                if len(feature_labels_current_check)>len(feature_labels_check):
+                if len(feature_labels_current_check)<len(feature_labels_check):
                     missing = set(feature_labels_check).difference(feature_labels_current_check)
                 else:
                     missing = set(feature_labels_current_check).difference(feature_labels_check)
