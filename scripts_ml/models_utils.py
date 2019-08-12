@@ -124,6 +124,9 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
                 output_path = models_path+experiment_name+'/'
                 print('- Saving the model to {}...'.format(output_path))
                 filename, filepath = save_sk_model(model, output_path, modeltype, prefix)
+            else: #for consistency with mlf_tracking
+                filename = None
+                filepath = None
 
             #saving results dictionary for viz
             if save_results_for_viz:
@@ -137,7 +140,7 @@ def models_loop(models, datafolder, prefixes, postfixes, trainfile='_traindata',
 
                 mlf_sk_tracking(experiment_name, prefix, postfix, modeltype, trainfile, testfile, datafolder,
                     X_train.shape[0], X_test.shape[0], model, model_kfold, model_oos, timeSeqValid, f_imp, CrossValFolds, 
-                    save_model=False, filename=None, filepath=None, save_results_for_viz=save_results_for_viz, dict_name=dict_name)
+                    save_model=save_model, filename=filename, filepath=filepath, save_results_for_viz=save_results_for_viz, dict_name=dict_name)
 
             print()
     print("Experiment done!")
@@ -380,7 +383,7 @@ def save_sk_model(model, datafolder, model_name, prefix):
     with open(filepath, "wb") as pickle_file:
             pickle.dump(model, pickle_file)
 
-    return (filename, filepath)
+    return filename, filepath
 
 
 def save_dictionary(dict, datafolder, dict_name, postfix):
@@ -470,8 +473,7 @@ def mlf_sk_tracking(experiment_name, prefix, postfix, modeltype, trainfile, test
                 print("WARNING! - filename and filepath set to 'None'! Please change them to a meaningful output path. The models output path have not been saved in mlflow!")
         else:
             mlflow.log_param("model_filepath", None)
-
-        mlflow.log_param("model_filename", None)
+            mlflow.log_param("model_filename", None)
 
         hpar = model.get_params()
         for par_name in hpar.keys():
