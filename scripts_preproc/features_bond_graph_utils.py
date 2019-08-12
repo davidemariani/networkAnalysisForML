@@ -31,7 +31,7 @@ def add_bg_features(df, col_to_calc_effort, effort_col, flow_col, col_to_calc_fl
     - effort_col: the name that will be assigned to the effort column
     - flow_col: the name that will be assigned to the flow column
     - col_to_calc_flow: the name of the column used to calculate the flow for bond graph formalism
-    - col_ratio_flow: column for the initial ratio of the flow calculation
+    - col_ratio_flow: column for the initial ratio of the flow calculation for impairment case (it must be set to None for delays)
     - node_flow_col: the name that will be assigned to the node flow
     - energy_col: the name that will be assigned to the energy column
     - c_node_eff_col: the name that will be assigned to the node effort column
@@ -48,6 +48,7 @@ def add_bg_features(df, col_to_calc_effort, effort_col, flow_col, col_to_calc_fl
     effort_col='p90_edge_eff', 
     flow_col='p90_edge_flow', 
     col_to_calc_flow = 'cd_pastdue90_r',
+    col_ratio_flow = None,
     node_flow_col ='p90_node_flow', 
     energy_col='p90_energy', 
     c_node_eff_col = 'p90_c_node_eff',
@@ -61,10 +62,15 @@ def add_bg_features(df, col_to_calc_effort, effort_col, flow_col, col_to_calc_fl
     #calculate edge effort and flow
     print("Calculating effort and flow for starting dataset with shape {}...".format(df.shape))
     edge_effort = df.groupby([seller_col, buyer_col]).apply(lambda x:np.nansum(x[col_to_calc_effort]))
-    edge_flow = df.groupby([seller_col, buyer_col]).apply(lambda x:np.nansum(x[col_to_calc_flow])/np.nansum(x[col_ratio_flow]))
+
+    if col_ratio_flow!=None: #this is for impairment1 case
+        edge_flow = df.groupby([seller_col, buyer_col]).apply(lambda x:np.nansum(x[col_to_calc_flow])/np.nansum(x[col_ratio_flow]))
+        df[flow_col] = [edge_flow[(df.loc[i, seller_col], df.loc[i, buyer_col])] for i in df.index]
+    else: #this is for delays
+        edge_flow = df[col_to_calc_flow]
 
     df[effort_col] = [edge_effort[(df.loc[i, seller_col], df.loc[i, buyer_col])] for i in df.index]
-    df[flow_col] = [edge_flow[(df.loc[i, seller_col], df.loc[i, buyer_col])] for i in df.index]
+    
 
     df[effort_col] = df[effort_col].replace([np.inf, -np.inf, np.nan], 0)
     df[flow_col] = df[flow_col].replace([np.inf, -np.inf, np.nan], 0)

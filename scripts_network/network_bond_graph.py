@@ -103,9 +103,13 @@ def create_directed_graphs(components, df, red_coeff, energy='imp_energy'):
 
     #calculating flow value on the whole network
     df_whole_temp = df.copy()
-    df_whole_temp['capacity'] = round(df[energy].unique()[0]/(red_coeff),3)
+    df_whole_temp['capacity'] = round(df[energy]/(red_coeff),3)
+    df_whole_temp['capacity'] = df_whole_temp['capacity'].astype(int)
+
     df_whole_temp['weight'] = abs(round(red_coeff/df_whole_temp['capacity'],3))
-    
+    df_whole_temp['weight'] = df_whole_temp['weight'].replace([np.inf, -np.inf], 0)
+    df_whole_temp['weight'] = df_whole_temp['weight'].astype(int)
+
     for comp in components:
          
          df_temp = df_whole_temp[df_whole_temp.customer_name_1.isin(comp)]
@@ -117,30 +121,7 @@ def create_directed_graphs(components, df, red_coeff, energy='imp_energy'):
                                         create_using = nx.DiGraph())
 
          dir_graphs.append(di_g)
-
-    #    di_g = nx.DiGraph()
-
-    #    for cus in df.loc[df.customer_name_1.isin(comp), 'customer_name_1'].unique():
-    #        df_tmp = df[df.customer_name_1==cus]
-
-
-    #        for debt in df_tmp['debtor_name_1'].unique():
-
-    #            if cus!=debt: #avoiding self-loops
-
-    #                df_tmp2 = df_tmp[df_tmp.debtor_name_1==debt]
-    #                flow = round(df_tmp2[energy].unique()[0]/(red_coeff),3)
-
-    #                if flow<1:
-    #                    flow=1
-    #                    weight_=red_coeff
-    #                else:
-    #                    weight_ = abs(round(red_coeff/flow,3))
-
-    #                di_g.add_edge(debt, cus,capacity=int(flow), weight=int(weight_))
-
         
-    
     return dir_graphs
 
 
