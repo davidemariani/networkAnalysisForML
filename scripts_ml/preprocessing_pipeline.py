@@ -416,8 +416,12 @@ def preproc_pipeline_timeseq(df, feat_str, feat_quant, feat_exp, feat_date, targ
         else:
             feature_labels_current_check = set(feature_labels)
             if feature_labels_check != feature_labels_current_check:
-                missing = feature_labels.difference(feature_labels_current_check)
-                print("WARNING! {} column seems to be missing!")
+                if len(feature_labels_current_check)>len(feature_labels_check):
+                    missing = set(feature_labels_check).difference(feature_labels_current_check)
+                else:
+                    missing = set(feature_labels_current_check).difference(feature_labels_check)
+
+                print("WARNING! {} column seems to be missing!".format(missing))
             feature_labels_check = feature_labels_current_check
 
         #saving folds indexes
