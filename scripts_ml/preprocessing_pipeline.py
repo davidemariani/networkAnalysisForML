@@ -20,6 +20,9 @@ from sklearn.impute import SimpleImputer
 from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn_pandas import DataFrameMapper, gen_features
+
+from scripts_ml.models_utils import *
+from scripts_preproc.features_bond_graph_utils import *
 #import itertools
 #import sys
 import os
@@ -158,6 +161,10 @@ def shuffle_train_test(df, trainsize, testsize, testset_control_feature):
 
     df = df.copy()
 
+    print("Dropping {} instruments that are not due...".format(len(df[~df['is_due']])))
+    df = df.copy()
+    df = df[df.is_due]
+
     print("Sampling {:} for train and {:} for test sets by shuffling...".format(trainsize, testsize))
 
     df[testset_control_feature + "_year"] = df[testset_control_feature].apply(lambda x: x.year)
@@ -185,6 +192,12 @@ def time_train_test(df, testset_control_feature, testdate):
     while all the instrument past that date will form the test set.
     """
 
+    df = df.copy()
+
+    print("Dropping {} instruments that are not due...".format(len(df[~df['is_due']])))
+    df = df.copy()
+    df = df[df.is_due]
+
     print("Splitting train and test sets by time, test cutoff: {:}...".format(testdate))
 
     test_all  = df.loc[df[testset_control_feature] >= testdate]
@@ -201,14 +214,20 @@ def idx_train_test(df, testset_control_feature, train_idx, test_idx):
     This function, given a dataset, train indexes and test indexes, will return train set and test set
     """
 
+    df = df.copy()
+
+    print("Dropping {} instruments that are not due...".format(len(df[~df['is_due']])))
+    df = df.copy()
+    df = df[df.is_due]
+
     print("Splitting train and test sets by indexes...")
 
     test_set  = df.iloc[test_idx]
     train_set = df.iloc[train_idx]
-    print("  {:}({:.1f}%) train, {:}({:.1f}%) test".format(train_set.shape[0], 100*train_set.shape[0]/df.shape[0],
-                                                            test_set.shape[0],   100*test_set.shape[0]/df.shape[0]))
+    print("train from {} to {}, test from {} to {}".format(train_idx[0], train_idx[-1],
+                                                            test_idx[0], test_idx[-1]))
 
-    return train_all, test_all
+    return train_set, test_set
 
 
 def transform_train_test(train_all, test_all, preproc_pipeline, target_feature):
@@ -242,7 +261,7 @@ def transform_train_test(train_all, test_all, preproc_pipeline, target_feature):
 
 
 
-def save_preproc_files(outputfolder, prefix, preproc_pipeline, y_train, X_train, y_test, X_test, feature_labels):
+def save_preproc_files(outputfolder, prefix, preproc_pipeline, y_train, X_train, y_test, X_test, feature_labels, fold_indexes=None):
     """
     This function will save all the preprocessing files into a given datafolder in pickle format
     """
@@ -262,12 +281,14 @@ def save_preproc_files(outputfolder, prefix, preproc_pipeline, y_train, X_train,
     pickle.dump([X_test, y_test, feature_labels], open(outputfolder+prefix+"_testdata" + postfix+'.pkl', "wb"), protocol=4)
     pickle.dump(preproc_pipeline, open(outputfolder+prefix+"_preproc_pipeline" + postfix+'.pkl', "wb"))
     pickle.dump(feature_labels, open(outputfolder+prefix+"_feature_labels" + postfix+'.pkl', "wb"))
+    if fold_indexes!=None:
+        pickle.dump(fold_indexes, open(outputfolder+prefix+"_fold_indexes" + postfix+'.pkl', "wb"))
     print("...done.")
 
 
 
 def preprocessing_pipeline(df, feat_str, feat_quant, feat_exp, feat_date, target_feature, testset_control_feature, experimentname, timewise = False,  
-                           trainsize=None, testsize=None, testdate=None, save_to_file=False, outputpath="../data/", prefix=''):
+                           trainsize=None, testsize=None, testdate=datetime.datetime(2018, 4, 30), save_to_file=False, outputpath="../data/", prefix=''):
     """
     This function execute the whole preprocessing pipeline on a given dataframe, allowing the choice between timewise splitting and 
     shuffle splitting of the dataset between train and test with the boolean parameter 'timewise'.
@@ -280,6 +301,7 @@ def preprocessing_pipeline(df, feat_str, feat_quant, feat_exp, feat_date, target
     if timewise:
         prefix1 = 'time_'+str(testdate).split(' ')[0]+'_'
         train_all, test_all = time_train_test(df, testset_control_feature, testdate)
+
     else:
         prefix1 = 'shuffle_'
         train_all, test_all = shuffle_train_test(df, trainsize, testsize, testset_control_feature)
@@ -298,7 +320,127 @@ def preprocessing_pipeline(df, feat_str, feat_quant, feat_exp, feat_date, target
     return y_train, X_train, y_test, X_test, feature_labels
 
 
-def preproc_pipeline_bg_val():
-    pass
+def preproc_pipeline_timeseq(df, feat_str, feat_quant, feat_exp, feat_date, target_feature, testset_control_feature, experimentname, 
+                             bg_settings_dicts, testdate=datetime.datetime(2018, 4, 30), train_window=12000, test_window=3000, #indexWise = False, 
+                             whole_network_with_bg_file_path = "../data/04_instrumentsdf_bondgraph.pkl",
+                             save_to_file=False, outputpath="../data/", prefix=''):
+    """
+    """
+    prefix1 = 'time_'+str(testdate).split(' ')[0]+'_'
+    preproc_pipeline = features_pipeline(feat_str, feat_quant, feat_exp, feat_date)
+
+    print("---------Macro train split-----------")
+    #macro-train split
+    train_all = time_train_test(df, testset_control_feature, testdate)[0]
+    train_all_bg = train_all.copy()
+
+    count_1=0
+    for set_dict in bg_settings_dicts:
+        count_1+=1
+        print("---------Adding bond graph features {} of {}-----------".format(count_1, len(bg_settings_dicts)))
+        train_all_bg = add_bg_features(**{**{'df':train_all_bg}, **set_dict}) #adding bg features
+
+    #test split with all bg features
+    print("---------Macro test split-----------")
+    full_df = pd.read_pickle(whole_network_with_bg_file_path)
+    test_all = time_train_test(full_df, testset_control_feature, testdate)[1]
+
+    print("---------Pipeline application-----------")
+    y_train, X_train, y_test, X_test, feature_labels = transform_train_test(train_all_bg, test_all, preproc_pipeline, target_feature)
+
+    print("---------Macro train-test saving-----------")
+    if save_to_file:
+        outputfolder = outputpath+experimentname+'/'
+
+        #Create target folder if it doesn't exist
+        if not os.path.exists(outputfolder):
+            os.mkdir(outputfolder)
+
+        save_preproc_files(outputfolder, prefix1+prefix, preproc_pipeline, y_train, X_train, y_test, X_test, feature_labels)
+
+    print("---------Sequential validation splits-----------")
+    #creating validation dataset
+    T = train_all.shape[0]
+    if train_window<1: #given as share of T
+        train_window = np.floor(train_window*T)
+    if test_window<1:
+        test_window = np.floor(test_window*T)
+
+    fold_generator = rolling_window(T, train_window, test_window)
+
+    folds_idx = []
+
+    valid_train = np.array([])
+
+    #placeholders
+    X_valid_train = []
+    y_valid_train = []
+    X_valid_test = []
+    y_valid_test = []
+
+    for count, train_idx, test_idx, Nsteps in fold_generator: #rolling window applied to training dataset for calibration
+        print("---------Train test for validation fold {}-----------".format(count))
+        train_idx = train_idx.astype(int)
+        test_idx = test_idx.astype(int)
+
+        #for creating test df, the whole network before the last test idx needs to be generated and used as input for bg extraction
+        full_test_window_idx = np.concatenate([train_idx, test_idx], axis=None) #index of the train window + test window
+        full_test_window_df = train_all.iloc[:test_idx[-1]+1]
+        full_test_window_df_bg = full_test_window_df.copy()
+
+        #for df train the last train index is considered
+        df_train = train_all.iloc[train_idx]
+        full_train_window_df = train_all.iloc[:train_idx[-1]+1]
+        full_train_window_df_bg = full_train_window_df.copy()
+
+        count_2 = 0
+        for set_dict in bg_settings_dicts:
+            count_2+=1
+
+            print("---------Adding bond graph features {} of {} to TRAIN SET for fold {}-----------".format(count_2, len(bg_settings_dicts), count))
+            full_train_window_df_bg = add_bg_features(**{**{'df':full_train_window_df_bg}, **set_dict})
+
+            print("---------Adding bond graph features {} of {} to TEST SET for fold {}-----------".format(count_2, len(bg_settings_dicts), count))
+            full_test_window_df_bg = add_bg_features(**{**{'df':full_test_window_df_bg}, **set_dict})
+
+        df_train = full_train_window_df_bg.iloc[train_idx]
+        df_test = full_test_window_df_bg.iloc[test_idx] 
+
+        print()
+        y_train_fold, X_train_fold, y_test_fold, X_test_fold, feature_labels = transform_train_test(df_train, df_test, preproc_pipeline, target_feature)
+
+        folds_idx.append((train_idx, test_idx))
+
+        if count==0:
+            print("Creating first fold with X_train of shape {}, y_train of shape {}, X_test of shape {} and y_test of shape {}...".format(X_train_fold.shape, y_train_fold.shape, 
+                                                                                                                                           X_test_fold.shape, y_test_fold.shape))
+            X_valid_train = X_train_fold
+            y_valid_train = y_train_fold
+            X_valid_test = X_test_fold
+            y_valid_test = y_test_fold
+
+        else:
+            print("Creating fold {} with X_train of shape {}, y_train of shape {}, X_test of shape {} and y_test of shape {}...".format(count, X_train_fold.shape, y_train_fold.shape, 
+                                                                                                                                           X_test_fold.shape, y_test_fold.shape))
+            X_valid_train = np.concatenate([X_valid_train, X_train_fold], axis=0)
+            y_valid_train = np.concatenate([y_valid_train, y_train_fold], axis=0)
+            X_valid_test = np.concatenate([X_valid_test, X_test_fold], axis=0)
+            y_valid_test = np.concatenate([y_valid_test, y_test_fold], axis=0)
+
+    
+    if save_to_file:
+        print("---------Saving sequential validation train and test-----------")
+        outputfolder = outputpath+experimentname+'/'
+        prefix_2 = '_val_'+str(train_window)+'_'+str(test_window)+'_'
+
+        #Create target folder if it doesn't exist
+        if not os.path.exists(outputfolder):
+            os.mkdir(outputfolder)
+
+        save_preproc_files(outputfolder, prefix1+prefix+prefix_2, preproc_pipeline, 
+                           y_valid_train, X_valid_train, y_valid_test, X_valid_test, 
+                           feature_labels, folds_idx)
+
+    return y_train, X_train, y_test, X_test, feature_labels, y_valid_train, X_valid_train, y_valid_test, X_valid_test, folds_idx  
 
 

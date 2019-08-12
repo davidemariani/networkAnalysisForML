@@ -20,16 +20,18 @@ from scripts_network.network_bond_graph import *
 from scripts_network.network_modelling import *
 
 
-def add_bg_features(df, col_to_calc_effort, effort_col, flow_col, col_to_calc_flow,
+def add_bg_features(df, col_to_calc_effort, effort_col, flow_col, col_to_calc_flow, col_ratio_flow,
                     node_flow_col, energy_col, c_node_eff_col,
                     d_node_flow_col, shock_col, red_coeff,
                     seller_col='customer_name_1', buyer_col='debtor_name_1'):
+    
     """
     This function adds bond graph features to the input dataset returning it in a modified version in relation to a given credit event.
     - col_to_calc_effort: the column used to calculate the effort for bond graph formalism
     - effort_col: the name that will be assigned to the effort column
     - flow_col: the name that will be assigned to the flow column
     - col_to_calc_flow: the name of the column used to calculate the flow for bond graph formalism
+    - col_ratio_flow: column for the initial ratio of the flow calculation
     - node_flow_col: the name that will be assigned to the node flow
     - energy_col: the name that will be assigned to the energy column
     - c_node_eff_col: the name that will be assigned to the node effort column
@@ -53,14 +55,21 @@ def add_bg_features(df, col_to_calc_effort, effort_col, flow_col, col_to_calc_fl
     shock_col = 'flow_shock_p90'
     red_coeff = 10**4
     """
+
     df = df.copy()
 
     #calculate edge effort and flow
-    print("Calculating effort and flow...")
+    print("Calculating effort and flow for starting dataset with shape {}...".format(df.shape))
     edge_effort = df.groupby([seller_col, buyer_col]).apply(lambda x:np.nansum(x[col_to_calc_effort]))
+    edge_flow = df.groupby([seller_col, buyer_col]).apply(lambda x:np.nansum(x[col_to_calc_flow])/np.nansum(x[col_ratio_flow]))
+
     df[effort_col] = [edge_effort[(df.loc[i, seller_col], df.loc[i, buyer_col])] for i in df.index]
+    df[flow_col] = [edge_flow[(df.loc[i, seller_col], df.loc[i, buyer_col])] for i in df.index]
+
     df[effort_col] = df[effort_col].replace([np.inf, -np.inf, np.nan], 0)
-    df[flow_col] = df[col_to_calc_flow].replace([np.inf, -np.inf, np.nan], 0)
+    df[flow_col] = df[flow_col].replace([np.inf, -np.inf, np.nan], 0)
+
+    print("Starting bg features - dataset shape: {}".format(df.shape))
 
     #building the undirected graph
     print("Creating the undirected graph of the whole dataset network...")
@@ -77,6 +86,7 @@ def add_bg_features(df, col_to_calc_effort, effort_col, flow_col, col_to_calc_fl
     print("Adding effort and flow feature to the dataset...")
     df = build_bgtfeat(df, g, edge_flow=flow_col, edge_eff=effort_col, node_flow=node_flow_col, energy=energy_col,
                       c_node_eff=c_node_eff_col, d_node_flow=d_node_flow_col)
+    print("Dataset shape after effort and flow features: {}".format(df.shape))
 
     #isolating graph components and creating directed graphs on each of them
     print("Isolating components and creating directed graphs...")
@@ -129,9 +139,13 @@ def add_bg_features(df, col_to_calc_effort, effort_col, flow_col, col_to_calc_fl
 
     #assigning the flow value to instruments as a new feature
     print("Adding shock-propagation features...")
-    for edge in sum_dict.keys():
-        df.loc[(df[seller_col]==edge[1]) & (df[buyer_col]==edge[0]), shock_col] = sum_dict[edge]
-
+    if len(sum_dict.keys())>0:
+        for edge in sum_dict.keys():
+            df.loc[(df[seller_col]==edge[1]) & (df[buyer_col]==edge[0]), shock_col] = sum_dict[edge]
+    else:
+        print("No graph found for shock-propagation features. NaN will be added...")
+        df.loc[(df[seller_col]==edge[1]) & (df[buyer_col]==edge[0]), shock_col] = np.NaN
+    print("Final dataset shape: {}".format(df.shape))
     print("Done!")
     return df
 
