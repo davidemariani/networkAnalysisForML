@@ -73,14 +73,10 @@ def add_bg_features(df, col_to_calc_effort, effort_col, flow_col, col_to_calc_fl
 
     #building the undirected graph
     print("Creating the undirected graph of the whole dataset network...")
-    g = nx.Graph() #some networkx functions only work on undirected graphs
-
-    for cus in df[seller_col].unique():
-        for debt in df.loc[df[seller_col]==cus, buyer_col].unique():
-        
-            df_tmp = df[df[seller_col]==cus]
-            df_tmp2 = df_tmp[df_tmp[buyer_col]==debt]
-            g.add_edge(debt, cus)
+    g = nx.from_pandas_edgelist(df,
+                                source=buyer_col,
+                                target=seller_col,
+                                create_using=nx.Graph)
 
     #adding features to the dataset
     print("Adding effort and flow feature to the dataset...")
