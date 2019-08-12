@@ -171,7 +171,7 @@ def rolling_window(T, ntrain, ntest, gen_for_grid_search=False):
         testi = np.array(range(int(T - (Nsteps-count)*ntest), int(T - (Nsteps-count)*ntest + ntest)))
         starti = int(T - (Nsteps-count-1)*ntest - ntrain)
 
-        print("Preparing fold {} with start at {}, {} train observations and {} test observations...".format(count, starti, len(traini), len(testi)))
+        print("Preparing fold {} with {} train observations and {} test observations, starti={}...".format(count, len(traini), len(testi), starti))
 
         if gen_for_grid_search: #option for 'cv' in grid_search
             yield traini, testi
