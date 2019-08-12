@@ -404,11 +404,23 @@ def preproc_pipeline_timeseq(df, feat_str, feat_quant, feat_exp, feat_date, targ
             full_test_window_df_bg = add_bg_features(**{**{'df':full_test_window_df_bg}, **set_dict})
 
         df_train = full_train_window_df_bg.iloc[train_idx]
+        print("Training dataset shape before preprocessing pipeline: {}".format(df_train.shape))
         df_test = full_test_window_df_bg.iloc[test_idx] 
+        print("Test dataset shape before preprocessing pipeline: {}".format(df_test.shape))
 
-        print()
         y_train_fold, X_train_fold, y_test_fold, X_test_fold, feature_labels = transform_train_test(df_train, df_test, preproc_pipeline, target_feature)
 
+        #sanity check on feature columns consistency among folds
+        if count==0:
+            feature_labels_check = set(feature_labels)
+        else:
+            feature_labels_current_check = set(feature_labels)
+            if feature_labels_check != feature_labels_current_check:
+                missing = feature_labels.difference(feature_labels_current_check)
+                print("WARNING! {} column seems to be missing!")
+            feature_labels_check = feature_labels_current_check
+
+        #saving folds indexes
         folds_idx.append((train_idx, test_idx))
 
         if count==0:
@@ -418,6 +430,7 @@ def preproc_pipeline_timeseq(df, feat_str, feat_quant, feat_exp, feat_date, targ
             y_valid_train = y_train_fold
             X_valid_test = X_test_fold
             y_valid_test = y_test_fold
+            print()
 
         else:
             print("Creating fold {} with X_train of shape {}, y_train of shape {}, X_test of shape {} and y_test of shape {}...".format(count, X_train_fold.shape, y_train_fold.shape, 
@@ -426,8 +439,8 @@ def preproc_pipeline_timeseq(df, feat_str, feat_quant, feat_exp, feat_date, targ
             y_valid_train = np.concatenate([y_valid_train, y_train_fold], axis=0)
             X_valid_test = np.concatenate([X_valid_test, X_test_fold], axis=0)
             y_valid_test = np.concatenate([y_valid_test, y_test_fold], axis=0)
+            print()
 
-    
     if save_to_file:
         print("---------Saving sequential validation train and test-----------")
         outputfolder = outputpath+experimentname+'/'
@@ -440,6 +453,7 @@ def preproc_pipeline_timeseq(df, feat_str, feat_quant, feat_exp, feat_date, targ
         save_preproc_files(outputfolder, prefix1+prefix+prefix_2, preproc_pipeline, 
                            y_valid_train, X_valid_train, y_valid_test, X_valid_test, 
                            feature_labels, folds_idx)
+        print()
 
     return y_train, X_train, y_test, X_test, feature_labels, y_valid_train, X_valid_train, y_valid_test, X_valid_test, folds_idx  
 
