@@ -385,7 +385,7 @@ def model_diag_seq(model, X_train, y_train, specify_idxs=False, train_window=600
         for count, train_idx, test_idx, Nsteps in fold_generator: #looping through validation folds specified by rolling window generator
             
             #validate and test
-            auc_fold, y_fold_test, y_scores = validate_and_test(model, X_train, y_train, train_idx, test_idx, scoring, count)
+            auc_fold, y_fold_test, y_scores = validate_and_test(model, X_train, y_train, train_idx, test_idx, count)
 
             #storing fold results
             results['AUC_fold_'+str(count)] = auc_fold
