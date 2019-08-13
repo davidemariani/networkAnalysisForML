@@ -27,6 +27,9 @@ from scripts_preproc.features_bond_graph_utils import *
 #import sys
 import os
 
+#-----------------------------------------
+# PREPROCESSING UTILS
+#-----------------------------------------
 
 #utils
 class Date2Num(BaseEstimator, TransformerMixin):
@@ -115,6 +118,10 @@ class SignLogScaler(BaseEstimator, TransformerMixin):
         return X1
 
 
+#-----------------------------------------
+# TRANSFORMATION PIPELINE
+#-----------------------------------------
+
 def features_pipeline(feat_str=[], feat_quant=[], feat_exp=[], feat_date=[]):
     """
     This function, given the lists of different type of features, returns a scikit learn preprocessing pipeline
@@ -150,6 +157,11 @@ def features_pipeline(feat_str=[], feat_quant=[], feat_exp=[], feat_date=[]):
     preproc_pipeline = DataFrameMapper(trans_quant + trans_exp + trans_str + trans_date)
 
     return preproc_pipeline
+
+
+#-----------------------------------------
+# TRAIN-TEST SPLITTING METHODS
+#-----------------------------------------
 
 
 def shuffle_train_test(df, trainsize, testsize, testset_control_feature):
@@ -236,6 +248,9 @@ def idx_train_test(df, testset_control_feature, train_idx, test_idx):
 
     return train_set, test_set
 
+#-----------------------------------------
+# TRANSFORMATION FUNCTIONS
+#-----------------------------------------
 
 def transform_train_test(train_all, test_all, preproc_pipeline, target_feature):
     """
@@ -266,7 +281,9 @@ def transform_train_test(train_all, test_all, preproc_pipeline, target_feature):
 
     return y_train, X_train, y_test, X_test, feature_labels
 
-
+#-----------------------------------------
+# SAVING METHODS
+#-----------------------------------------
 
 def save_preproc_files(outputfolder, prefix, preproc_pipeline, y_train, X_train, y_test, X_test, feature_labels, fold_indexes=None):
     """
@@ -293,6 +310,9 @@ def save_preproc_files(outputfolder, prefix, preproc_pipeline, y_train, X_train,
     print("...done.")
 
 
+#-----------------------------------------
+# PREPROCESSING SEQUENCES
+#-----------------------------------------
 
 def preprocessing_pipeline(df, feat_str, feat_quant, feat_exp, feat_date, target_feature, testset_control_feature, experimentname, timewise = False,  
                            trainsize=None, testsize=None, testdate=datetime.datetime(2018, 4, 30), save_to_file=False, outputpath="../data/", prefix='',
@@ -347,6 +367,7 @@ def preproc_pipeline_timeseq(df, feat_str, feat_quant, feat_exp, feat_date, targ
     It requires a dataframe (the one not having bond graph features yet), the various types of features as per preprocessing_pipeline function,
     a target feature depending on the credit event to predict, a testset_control_feature, experiment name.
     bg_settings_dicts is a list of dictionary containing the settings for the add_bg_features function which generates the bond graph features.
+    It still uses the full bond graph dataset for extracting the test set for final stage.
     """
 
     df = df.copy()

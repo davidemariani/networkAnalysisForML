@@ -281,7 +281,7 @@ def models_loop_time_leak(models, datafolder, prefixes, postfixes, val_timeseq_e
 #-----------------------------------------
 
 def rolling_window(T, ntrain, ntest, gen_for_grid_search=False,
-                   fixed_test_folds_size=False, test_fold_size=None):
+                   fixed_test_folds_idxs=False):
     """
     This function executes a generator for performing 'rolling window validation', in which a sliding portion of the training
     set is used  instead of classical k-fold validation.
@@ -305,15 +305,11 @@ def rolling_window(T, ntrain, ntest, gen_for_grid_search=False,
         print("Preparing fold {} with {} train observations and {} test observations, starti={}...".format(count, len(traini), len(testi), starti))
 
         if gen_for_grid_search: #option for 'cv' in scikit-learn grid_search or random_search
-            if fixed_test_folds_size: #if there's always the same size for test fold split, generate progressive folds
-                if test_fold_size!=None:
-                    if count==0:
-                        testi_gs = np.array(range(0, test_fold_size))
-                    else:
-                        testi_gs+=test_fold_size
+            if fixed_test_folds_idxs: #if there's always the same size for test fold split, generate progressive folds
+                if count==0:
+                    testi_gs = np.array(range(0, ntest))
                 else:
-                    print("WARNING - Setting fixed_test_folds_size to True you need to specify a test_fold_size!")
-                    return
+                    testi_gs+=ntest
 
                 yield traini, testi_gs
 
