@@ -280,7 +280,8 @@ def models_loop_time_leak(models, datafolder, prefixes, postfixes, val_timeseq_e
 # VALIDATION METHODS UTILS
 #-----------------------------------------
 
-def rolling_window(T, ntrain, ntest, gen_for_grid_search=False):
+def rolling_window(T, ntrain, ntest, gen_for_grid_search=False,
+                   fixed_test_folds_size=False, test_fold_size=None):
     """
     This function executes a generator for performing 'rolling window validation', in which a sliding portion of the training
     set is used  instead of classical k-fold validation.
@@ -289,6 +290,7 @@ def rolling_window(T, ntrain, ntest, gen_for_grid_search=False):
     The generator will yield fold-count number, train indexes and test indexes.
     Setting gen_for_grid_search to True will make the generator yielding just train indexes and test indexes; this is useful when using gridsearch
     for hyperparameters tuning in scikit learn, creating customized validation options with the attribute 'cv'.
+    Setting fixed_test_folds_size = True and specifying a test_fold_size, the generator will yield progressive
     """
 
     Nsteps = (T - ntrain) // ntest #rounded down number of folds
@@ -302,8 +304,21 @@ def rolling_window(T, ntrain, ntest, gen_for_grid_search=False):
 
         print("Preparing fold {} with {} train observations and {} test observations, starti={}...".format(count, len(traini), len(testi), starti))
 
-        if gen_for_grid_search: #option for 'cv' in grid_search
-            yield traini, testi
+        if gen_for_grid_search: #option for 'cv' in scikit-learn grid_search or random_search
+            if fixed_test_folds_size: #if there's always the same size for test fold split, generate progressive folds
+                if test_fold_size!=None:
+                    if count==0:
+                        testi_gs = np.array(range(0, test_fold_size))
+                    else:
+                        testi_gs+=test_fold_size
+                else:
+                    print("WARNING - Setting fixed_test_folds_size to True you need to specify a test_fold_size!")
+                    return
+
+                yield traini, testi_gs
+
+            else:
+                yield traini, testi
         else:
             yield count, traini, testi, Nsteps
 
