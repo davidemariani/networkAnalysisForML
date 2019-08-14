@@ -359,7 +359,8 @@ def preprocessing_pipeline(df, feat_str, feat_quant, feat_exp, feat_date, target
 def preproc_pipeline_timeseq(df, feat_str, feat_quant, feat_exp, feat_date, target_feature, testset_control_feature, experimentname, 
                              bg_settings_dicts, testdate=datetime.datetime(2018, 4, 30), train_window=12000, test_window=3000, #indexWise = False, 
                              whole_network_with_bg_file_path = "../data/04_instrumentsdf_bondgraph.pkl",
-                             save_to_file=False, outputpath="../data/", prefix='', decompose_currency=False):
+                             save_to_file=False, outputpath="../data/", prefix='', decompose_currency=False,
+                             validation_prep_only=False):
     """
     This function generate a training set and a test set rebuilding for each of them the bond graph features, preventing the time leak problem.
     It also generates a number of folds specified with the rolling_window function (which requires train and test windows size) recreating the same
@@ -368,6 +369,7 @@ def preproc_pipeline_timeseq(df, feat_str, feat_quant, feat_exp, feat_date, targ
     a target feature depending on the credit event to predict, a testset_control_feature, experiment name.
     bg_settings_dicts is a list of dictionary containing the settings for the add_bg_features function which generates the bond graph features.
     It still uses the full bond graph dataset for extracting the test set for final stage.
+    Setting validation_prep_only to True only the validation folds are created.
     """
 
     df = df.copy()
@@ -386,34 +388,36 @@ def preproc_pipeline_timeseq(df, feat_str, feat_quant, feat_exp, feat_date, targ
     train_all = time_train_test(df, testset_control_feature, testdate)[0]
     train_all_bg = train_all.copy()
 
-    count_1=0
-    for set_dict in bg_settings_dicts:
-        count_1+=1
-        print("---------Adding bond graph features {} of {}-----------".format(count_1, len(bg_settings_dicts)))
-        train_all_bg = add_bg_features(**{**{'df':train_all_bg}, **set_dict}) #adding bg features
+    if not validation_prep_only: #setting validation_prep_only to True only the validation splits are done skipping the whole train + test set split
 
-    #test split with all bg features
-    print("---------Macro test split-----------")
-    full_df = pd.read_pickle(whole_network_with_bg_file_path)
-    if decompose_currency:
-        print("Decomposing currency column from full dataset to multiple columns with boolean values...")
-        for c in full_df.currency.unique():
-            full_df['currency_'+str(c)] = full_df['currency']==c
+        count_1=0
+        for set_dict in bg_settings_dicts:
+            count_1+=1
+            print("---------Adding bond graph features {} of {}-----------".format(count_1, len(bg_settings_dicts)))
+            train_all_bg = add_bg_features(**{**{'df':train_all_bg}, **set_dict}) #adding bg features
 
-    test_all = time_train_test(full_df, testset_control_feature, testdate)[1]
+        #test split with all bg features
+        print("---------Macro test split-----------")
+        full_df = pd.read_pickle(whole_network_with_bg_file_path)
+        if decompose_currency:
+            print("Decomposing currency column from full dataset to multiple columns with boolean values...")
+            for c in full_df.currency.unique():
+                full_df['currency_'+str(c)] = full_df['currency']==c
 
-    print("---------Pipeline application-----------")
-    y_train, X_train, y_test, X_test, feature_labels = transform_train_test(train_all_bg, test_all, preproc_pipeline, target_feature)
+        test_all = time_train_test(full_df, testset_control_feature, testdate)[1]
 
-    print("---------Macro train-test saving-----------")
-    if save_to_file:
-        outputfolder = outputpath+experimentname+'/'
+        print("---------Pipeline application-----------")
+        y_train, X_train, y_test, X_test, feature_labels = transform_train_test(train_all_bg, test_all, preproc_pipeline, target_feature)
 
-        #Create target folder if it doesn't exist
-        if not os.path.exists(outputfolder):
-            os.mkdir(outputfolder)
+        print("---------Macro train-test saving-----------")
+        if save_to_file:
+            outputfolder = outputpath+experimentname+'/'
 
-        save_preproc_files(outputfolder, prefix1+prefix, preproc_pipeline, y_train, X_train, y_test, X_test, feature_labels)
+            #Create target folder if it doesn't exist
+            if not os.path.exists(outputfolder):
+                os.mkdir(outputfolder)
+
+            save_preproc_files(outputfolder, prefix1+prefix, preproc_pipeline, y_train, X_train, y_test, X_test, feature_labels)
 
     print("---------Sequential validation splits-----------")
     #creating validation dataset
