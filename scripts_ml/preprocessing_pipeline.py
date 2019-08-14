@@ -538,6 +538,9 @@ def preproc_pipeline_timeseq(df, feat_str, feat_quant, feat_exp, feat_date, targ
                            feature_labels, folds_idx)
         print()
 
-    return y_train, X_train, y_test, X_test, feature_labels, y_valid_train, X_valid_train, y_valid_test, X_valid_test, folds_idx  
+    if not validation_prep_only:
+        return y_train, X_train, y_test, X_test, feature_labels, y_valid_train, X_valid_train, y_valid_test, X_valid_test, folds_idx  
+    else:
+        return feature_labels, y_valid_train, X_valid_train, y_valid_test, X_valid_test, folds_idx  
 
 
