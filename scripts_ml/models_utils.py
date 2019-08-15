@@ -705,11 +705,11 @@ def mlf_sk_tracking(experiment_name, prefix, postfix, modeltype, trainfile, test
         else:
             count=0
             for fold in model_kfold.keys():
-                count+=1
                 if 'AUC_fold_' in fold:
                     auc_seq_fold = round(model_kfold[fold],3)
                     mlflow.log_metric("val_auc_fold_"+str(count), auc_seq_fold)
                     mlflow.log_metric("validation_nfolds", count)
+                    count+=1
 
         mlflow.log_metric("val_auc", auc_kf_general)
 
