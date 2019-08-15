@@ -521,9 +521,9 @@ def radar_patch(r, theta, centre ):
 
 def spiderWebChart(legend_names, names, vals, colors, title = '', 
                    subvids = 4, main_size = 0.5, normalize = False,
-                  perc_scale = False, fill_alpha=0.3, text_size="8pt",
+                  perc_scale = False, fill_alpha=0.3, line_width=1., text_size="8pt",
                   p_width=500, p_height=500, legend_location = "top_left",
-                  margin_distance = 0.5): 
+                  margin_distance = 0.5, show_legend=True): 
     """
     This function plots a single spider web chart that overlap different sets of values (if more than one is provided).
     names: the name of each field to compare in the graph
@@ -607,11 +607,13 @@ def spiderWebChart(legend_names, names, vals, colors, title = '',
     for f in range(len(flist)):
         xt, yt = radar_patch(flist[f], theta, centre)
         source_tmp = ColumnDataSource({'x':xt, 'y':yt, 'values':flist[f]})
-        p.patch(x='x', y='y', fill_alpha=fill_alpha, fill_color=colors[f], source=source_tmp, legend = legend_names[f])
+        p.patch(x='x', y='y', fill_alpha=fill_alpha, fill_color=colors[f], source=source_tmp, legend = legend_names[f],
+                line_width=line_width, line_color=colors[f])
 
     
     p.legend.location = legend_location
     p.legend.click_policy="hide"
+    p.legend.visible = show_legend
     
     p.xaxis.visible = False
     p.yaxis.visible = False
@@ -631,11 +633,12 @@ def plot_rocs(metrics, label=None,
               exportpng = False,
               model_appendix = None,
               dark_background = False,
-              deepFprOnly = False,
+              bestFprOnly = False,
               legend_font_size = '12pt',
               fpr_font_size = '12pt',
               legend_location = 'bottom_right',
-              colors = [TTQcolor['azureBlue'], TTQcolor['richOrange']]): 
+              colors = [TTQcolor['azureBlue'], TTQcolor['richOrange']],
+              show_legend = True): 
     """
     This function will create a ROC curve for each metric plugged in. The argument 'metrics' needs to be a list.
     Each metric must be in the form {'fpr': array, 'tpr': array, 'auc': array} as per 'model_analysis_viz.py' modelling.
@@ -650,7 +653,7 @@ def plot_rocs(metrics, label=None,
                x_axis_label = 'False Positive Rate',
                y_axis_label = 'True Positive Rate',
                tools = [BoxZoomTool(), ResetTool(), HoverTool()],
-               output_backend="webgl"
+               output_backend="webgl",
                )
     
     dashed_line_color = 'grey'
@@ -697,10 +700,11 @@ def plot_rocs(metrics, label=None,
     
     txtfpr = [str(round(num,4)) for num in fpr80]
 
-    if deepFprOnly:
-        fpr80 = [fpr80[-1]]
-        select_point_list = [select_point_list[-1]]
-        txtfpr = ['('+ str(round(select_point,2))+' , '+str(round(fpr80[0],3))+ ')']
+    if bestFprOnly:
+        best_index = np.argmin(fpr80)
+        fpr80 = [fpr80[best_index]]
+        select_point_list = [select_point_list[best_index]]
+        txtfpr = ['('+ str(round(select_point_list[0],2))+' , '+str(round(fpr80[0],3))+ ')']
 
 
     label_source = ColumnDataSource(data=dict(fpr80_lab = fpr80,
@@ -714,7 +718,7 @@ def plot_rocs(metrics, label=None,
                       source = label_source,
                       text_font_size = fpr_font_size,
                       x_offset = -20,
-                      y_offset = -28,
+                      y_offset = 28,
                       render_mode = 'css',
                       text_color = fpr80_text_color)
 
@@ -729,6 +733,8 @@ def plot_rocs(metrics, label=None,
     p.legend.background_fill_color = legend_background_color
     p.legend.label_text_color = legend_text_color
     p.legend.label_text_font_size = legend_font_size
+
+    p.legend.visible = show_legend
 
     #output file
     if file_output:
@@ -757,7 +763,6 @@ def histfolds(models, metrics, vizdict, plot_h=250, plot_w=250, colors = [TTQcol
             fold_metrics.append(vizdict.loc[metric, model])
         data[metric] = fold_metrics
 
-    
     x = [ (mod, met) for mod in models for met in metrics ]
 
     counts = []
@@ -766,11 +771,12 @@ def histfolds(models, metrics, vizdict, plot_h=250, plot_w=250, colors = [TTQcol
             counts.append(data[mm][m])
 
     colors_list = []
-    for cc in colors:
-        colors_list+=[cc]*len(metrics)
+    for cc in range(len(models)):
+        colors_list+=[colors[cc]]*len(metrics)
 
     source = ColumnDataSource(data=dict(x=x, counts=counts, 
                                         color=colors_list))
+
     p = figure(x_range=FactorRange(*x), plot_height=plot_h, plot_width = plot_w, title=title,
                toolbar_location=None, tools="")
 
@@ -796,6 +802,6 @@ def modelSpreadsheet(viz_dict, metric_list, model_type, width=900, height=100, i
     source.data = {**{'model' : viz_dict.columns[rf_filter]}, **dict(zip(metric_list, [viz_dict.loc[m][rf_filter] for m in metric_list]))}
     columns = [TableColumn(field=i, title=i) for i in source.data.keys()]
 
-    data_table = DataTable(source=source, columns=columns, width=1100, height=100, index_header=model_type, index_width=150)
+    data_table = DataTable(source=source, columns=columns, width=width, height=height, index_header=model_type, index_width=index_width)
 
     return data_table
