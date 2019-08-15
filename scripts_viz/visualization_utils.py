@@ -21,7 +21,7 @@ import math
 from bokeh.plotting import figure
 from bokeh.models import LinearAxis, Range1d, SingleIntervalTicker, AdaptiveTicker, ColumnDataSource, FactorRange, LabelSet, HoverTool, Label, BoxZoomTool, ResetTool
 from bokeh.models.formatters import BasicTickFormatter
-from bokeh.models.widgets import DataTable, TableColumn
+from bokeh.models.widgets import DataTable, TableColumn, HTMLTemplateFormatter
 from bokeh.models.glyphs import Text
 from numpy import histogram, linspace
 from scipy.stats.kde import gaussian_kde
@@ -523,7 +523,7 @@ def spiderWebChart(legend_names, names, vals, colors, title = '',
                    subvids = 4, main_size = 0.5, normalize = False,
                   perc_scale = False, fill_alpha=0.3, line_width=1., text_size="8pt",
                   p_width=500, p_height=500, legend_location = "top_left",
-                  margin_distance = 0.5, show_legend=True): 
+                  margin_distance = 0.5, show_legend=True, tools=''): 
     """
     This function plots a single spider web chart that overlap different sets of values (if more than one is provided).
     names: the name of each field to compare in the graph
@@ -556,7 +556,7 @@ def spiderWebChart(legend_names, names, vals, colors, title = '',
     
     #figure
     p = figure(title=title, x_range=(-margin_distance,1+margin_distance), y_range=(-margin_distance,1+margin_distance),
-               plot_width = p_width, plot_height = p_height) #, tools= _tools_to_show)
+               plot_width = p_width, plot_height = p_height, tools=tools) 
     
     #main polygon line
     p.line(x="x", y="y", source=source)
@@ -634,6 +634,7 @@ def plot_rocs(metrics, label=None,
               model_appendix = None,
               dark_background = False,
               bestFprOnly = False,
+              line_width = 3,
               legend_font_size = '12pt',
               fpr_font_size = '12pt',
               legend_location = 'bottom_right',
@@ -689,7 +690,7 @@ def plot_rocs(metrics, label=None,
 
     for idx, metric in enumerate(metrics):
         #roc curves
-        p.line(metric["fpr"], metric["tpr"], line_color = col[idx], line_width = 3, 
+        p.line(metric["fpr"], metric["tpr"], line_color = col[idx], line_width = line_width, 
                legend = label[idx]+model_appendix[idx]+' - AUC: '+str(round(metric['auc'],2)))
         fpr80.append(np.interp([select_point], metric["tpr"], metric["fpr"])[0])
 
@@ -747,13 +748,13 @@ def plot_rocs(metrics, label=None,
 
 
 def histfolds(models, metrics, vizdict, plot_h=250, plot_w=250, colors = [TTQcolor['richOrange'], TTQcolor['azureBlue']],
-              title='', barwidth=0.95, xlabelorientation = 1):
+              title='', barwidth=0.95, xlabelorientation = 1, group_text_font_size='10pt', xlabel_font_size='8pt'):
     """
     This function will create a bokeh plot to visualize the AUC performances of each fold at validation stage.
     It requires as inputs:
     models: the name of the models
     metrics: the name of the metrics to visualize as they are stated in the visualization dictionary
-    vizdict: a visualization dictionary
+    vizdict: a visualization pandas dataframe
     """
 
     data = {'names':models}
@@ -787,11 +788,14 @@ def histfolds(models, metrics, vizdict, plot_h=250, plot_w=250, colors = [TTQcol
     p.x_range.range_padding = 0.1
     p.xaxis.major_label_orientation = xlabelorientation
     p.xgrid.grid_line_color = None
+    p.xaxis.major_label_text_font_size = xlabel_font_size
+    p.xaxis.group_text_font_size = group_text_font_size
 
     return p
 
 
-def modelSpreadsheet(viz_dict, metric_list, model_type, width=900, height=100, index_width=150):
+def modelSpreadsheet(viz_dict, metric_list, model_type, color_cells=False, colors=[], index_header='', width=900, height=100, index_width=150,
+                     row_height=25):
     """
     This function place a spreadsheet containing model information for performance visualization in a bokeh plot
     """
@@ -799,9 +803,26 @@ def modelSpreadsheet(viz_dict, metric_list, model_type, width=900, height=100, i
 
     source = ColumnDataSource(data=dict())
     rf_filter  = viz_dict.loc['model_type'] == model_type
-    source.data = {**{'model' : viz_dict.columns[rf_filter]}, **dict(zip(metric_list, [viz_dict.loc[m][rf_filter] for m in metric_list]))}
-    columns = [TableColumn(field=i, title=i) for i in source.data.keys()]
+    source.data = {**{'model' : viz_dict.columns[rf_filter], 'colors':colors}, **dict(zip(metric_list, [viz_dict.loc[m][rf_filter] for m in metric_list]))}
 
-    data_table = DataTable(source=source, columns=columns, width=width, height=height, index_header=model_type, index_width=index_width)
+    if color_cells:
+        template="""
+                <div style="background:<%= 
+                    (function getcolor(){
+                        return colors
+                        }()) %>; 
+                    color: black"> 
+                <%= value %>
+                </div>
+                """
+        formatter =  HTMLTemplateFormatter(template=template)
+        modelcol = [TableColumn(field='model', title='model', formatter=formatter)]
+        columns = modelcol + [TableColumn(field=i, title=i) for i in source.data.keys() if i not in ('colors', 'model')]
+
+    else:
+        columns = [TableColumn(field=i, title=i, formatter=formatter) for i in source.data.keys() if i!='colors']
+
+    data_table = DataTable(source=source, columns=columns, width=width, height=height, index_header=index_header, index_width=index_width,
+                           row_height=row_height)
 
     return data_table
