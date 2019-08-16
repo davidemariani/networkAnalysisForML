@@ -156,6 +156,33 @@ def show_stats(inst, buyer, seller):
         print("    {:}: {:.1f} average instruments, {:}({:.1f}%) with some".format(
               c, seller[c].mean(), sum(seller[c] > 0), 100*sum(seller[c]>0)/Ns))
 
+
+def set_clf_cols(viz):
+    """
+    This is an auxiliar function for building the performance gridplot viz.
+    It gets a visualization dataframe as inputs and it returns the same dataframe adapted for gridplot viz.
+    """
+    
+    viz = viz.copy()
+    names = viz['model_filename']
+    
+    mod_names = []
+    
+    count=0
+    postfix = ''
+    for name in names:
+        postfix = name.split(viz['model_type'][count])[1].replace(postfix+'__', '').replace('.pkl','')
+        newname = viz['model_type'][count]+postfix
+        mod_names.append(newname)
+        count+=1
+    
+    viz.index = mod_names
+    
+    return viz.transpose()
+
+
+
+
 #DATASETS COMPARISON
 
 #base empty dataframe structure
@@ -621,6 +648,40 @@ def spiderWebChart(legend_names, names, vals, colors, title = '',
     return p
 
 
+def modelSpreadsheet(viz_dict, metric_list, model_type, color_cells=False, colors=[], index_header='', width=900, height=100, index_width=150,
+                     row_height=25):
+    """
+    This function place a spreadsheet containing model information for performance visualization in a bokeh plot
+    """
+
+
+    source = ColumnDataSource(data=dict())
+    rf_filter  = viz_dict.loc['model_type'].isin(model_type)
+    source.data = {**{'model' : viz_dict.columns[rf_filter], 'colors':colors}, **dict(zip(metric_list, [viz_dict.loc[m][rf_filter] for m in metric_list]))}
+
+    if color_cells:
+        template="""
+                <div style="background:<%= 
+                    (function getcolor(){
+                        return colors
+                        }()) %>; 
+                    color: black"> 
+                <%= value %>
+                </div>
+                """
+        formatter =  HTMLTemplateFormatter(template=template)
+        modelcol = [TableColumn(field='model', title='model', formatter=formatter)]
+        columns = modelcol + [TableColumn(field=i, title=i) for i in source.data.keys() if i not in ('colors', 'model')]
+
+    else:
+        columns = [TableColumn(field=i, title=i, formatter=formatter) for i in source.data.keys() if i!='colors']
+
+    data_table = DataTable(source=source, columns=columns, width=width, height=height, index_header=index_header, index_width=index_width,
+                           row_height=row_height)
+
+    return data_table
+
+
 
 #MODEL PERFORMANCE VIZ
 
@@ -794,35 +855,3 @@ def histfolds(models, metrics, vizdict, plot_h=250, plot_w=250, colors = [TTQcol
     return p
 
 
-def modelSpreadsheet(viz_dict, metric_list, model_type, color_cells=False, colors=[], index_header='', width=900, height=100, index_width=150,
-                     row_height=25):
-    """
-    This function place a spreadsheet containing model information for performance visualization in a bokeh plot
-    """
-
-
-    source = ColumnDataSource(data=dict())
-    rf_filter  = viz_dict.loc['model_type'] == model_type
-    source.data = {**{'model' : viz_dict.columns[rf_filter], 'colors':colors}, **dict(zip(metric_list, [viz_dict.loc[m][rf_filter] for m in metric_list]))}
-
-    if color_cells:
-        template="""
-                <div style="background:<%= 
-                    (function getcolor(){
-                        return colors
-                        }()) %>; 
-                    color: black"> 
-                <%= value %>
-                </div>
-                """
-        formatter =  HTMLTemplateFormatter(template=template)
-        modelcol = [TableColumn(field='model', title='model', formatter=formatter)]
-        columns = modelcol + [TableColumn(field=i, title=i) for i in source.data.keys() if i not in ('colors', 'model')]
-
-    else:
-        columns = [TableColumn(field=i, title=i, formatter=formatter) for i in source.data.keys() if i!='colors']
-
-    data_table = DataTable(source=source, columns=columns, width=width, height=height, index_header=index_header, index_width=index_width,
-                           row_height=row_height)
-
-    return data_table
