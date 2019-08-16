@@ -220,7 +220,7 @@ def models_loop_time_leak(models, datafolder, prefixes, postfixes, val_timeseq_e
             #validation performance
             print('- Training/Validation...')
             model_kfold = model_diag_seq(model, X_train, y_train, 
-                                             specify_idxs=True, idx_tuples=indexes, X_test=X_test, y_test=y_test)
+                                             specify_idxs=True, idx_tuples=indexes, X_test=X_test, y_test=y_test, scoring=scoring)
 
             results['validation'] = model_kfold
 
@@ -354,7 +354,7 @@ def model_diag(model, X_train, y_train, CrossValFolds=5, scoring = {'AUC':'roc_a
 
 
 def model_diag_seq(model, X_train, y_train, specify_idxs=False, train_window=6000, test_window=1200,
-                   idx_tuples=[] , X_test=[], y_test=[]):
+                   idx_tuples=[] , X_test=[], y_test=[], scoring = {'AUC':'roc_auc'}):
     """
     This function returns as output false positive rates, true positive rates and auc score for time sequence fold validation
     and each time split validation fold in the form of a dictionary.
@@ -388,7 +388,9 @@ def model_diag_seq(model, X_train, y_train, specify_idxs=False, train_window=600
             auc_fold, y_fold_test, y_scores = validate_and_test(model, X_train, y_train, train_idx, test_idx, count)
 
             #storing fold results
-            results['AUC_fold_'+str(count)] = auc_fold
+            for score in list(scoring.keys()):
+                results[score+'_fold_'+str(count+1)] = auc_fold
+            
             preds+=list(y_scores)
             tests+=list(y_fold_test)
     else:
@@ -416,7 +418,9 @@ def model_diag_seq(model, X_train, y_train, specify_idxs=False, train_window=600
                                                                     from_separate_sets=True, X_test=X_test, y_test=y_test)
 
                 #storing fold results
-                results['AUC_fold_'+str(count)] = auc_fold
+                for score in list(scoring.keys()):
+                    results['AUC_fold_'+str(count)] = auc_fold
+
                 preds+=list(y_scores)
                 tests+=list(y_fold_test)
 
@@ -707,9 +711,10 @@ def mlf_sk_tracking(experiment_name, prefix, postfix, modeltype, trainfile, test
             for fold in model_kfold.keys():
                 if 'AUC_fold_' in fold:
                     auc_seq_fold = round(model_kfold[fold],3)
-                    mlflow.log_metric("val_auc_fold_"+str(count), auc_seq_fold)
-                    mlflow.log_metric("validation_nfolds", count)
+                    mlflow.log_metric("val_auc_fold_"+str(count+1), auc_seq_fold)
                     count+=1
+            mlflow.log_metric("validation_nfolds", count)
+                    
 
         mlflow.log_metric("val_auc", auc_kf_general)
 
