@@ -623,6 +623,23 @@ def save_dictionary(dict, datafolder, dict_name, postfix):
 # EXPERIMENT TRACKING
 #-----------------------------------------
 
+def list_to_string(list_):
+            """
+            This function is an auxiliar function for the mlflow tracking system.
+            It transform a list of values into a single string with comma separated values that can be reproduced for viz
+            """
+            string_=''
+
+            count=0
+            for i in list_:
+                if count!=len(list_)-1:
+                    string_+=str(i)
+                    string_+=","
+                else:
+                    string_+=str(i)
+            return string_
+
+
 def mlf_sk_tracking(experiment_name, prefix, postfix, modeltype, trainfile, testfile, datafolder,
                     train_size, test_size, model, model_kfold, model_oos, timeSeqValid, feat_imp_dict,
                     CrossValFolds=None, save_model=False, filename=None, filepath=None,
@@ -714,8 +731,11 @@ def mlf_sk_tracking(experiment_name, prefix, postfix, modeltype, trainfile, test
                     mlflow.log_metric("val_auc_fold_"+str(count+1), auc_seq_fold)
                     count+=1
             mlflow.log_metric("validation_nfolds", count)
-                    
 
+
+        mlflow.log_param("roc_val_fpr", list_to_string(model_kfold['fpr']))
+        mlflow.log_param("roc_val_tpr", list_to_string(model_kfold['tpr']))
+                    
         mlflow.log_metric("val_auc", auc_kf_general)
 
         #test metrics tracking
@@ -736,6 +756,9 @@ def mlf_sk_tracking(experiment_name, prefix, postfix, modeltype, trainfile, test
         mlflow.log_metric("test_fp", fp) #false positive rate
         mlflow.log_metric("test_fn", fn) #false negative ratee
         mlflow.log_metric("test_tn", tn) #true negative rate
+
+        mlflow.log_param("roc_test_fpr", list_to_string(model_oos['fpr']))
+        mlflow.log_param("roc_test_tpr", list_to_string(model_oos['tpr']))
 
 
         #features importances tracking
