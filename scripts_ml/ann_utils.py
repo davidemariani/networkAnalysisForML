@@ -760,6 +760,8 @@ def mlp_exp_timeseq(datafolder, prefix_time_seq, postfix_time_seq,
         fold_history = mlp_training(mlp, fold_X_train, fold_y_train, epochs=epochs, batch_size=batch_size, use_batch_and_steps=use_batch_and_steps, class_1_weight=class_1_weight, shuffle=shuffle,
                     validation_ep=False, early_stopping=early_stopping, to_monitor=to_monitor, verbose=verbose)
 
+        print("Fold {} model trained after {} epochs".format(count+1, len(fold_history.history['loss'])))
+
         fold_results = mlp_oostest(mlp, fold_X_test, fold_y_test, pred_threshold)
 
         #tracking fold results
