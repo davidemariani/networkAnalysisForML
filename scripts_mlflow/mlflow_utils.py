@@ -274,7 +274,12 @@ def create_exp_df(experiment):
         runs_df_list.append(df_base_c)
     viz = pd.concat(runs_df_list, axis=1).transpose().dropna(how='all') 
     viz = set_clf_cols(viz)
-    
+
+    viz.loc['tp_rate'] = viz.loc['test_tp']/(viz.loc['test_tp'] + viz.loc['test_fn'])
+    viz.loc['tn_rate'] = viz.loc['test_tn']/(viz.loc['test_tn'] + viz.loc['test_fp'])
+    viz.loc['fp_rate'] = viz.loc['test_fp']/(viz.loc['test_tp'] + viz.loc['test_tn'])
+    viz.loc['fn_rate'] = viz.loc['test_fn']/(viz.loc['test_tn'] + viz.loc['test_tp'])
+
     return viz
 
 #-----------------------------------------
