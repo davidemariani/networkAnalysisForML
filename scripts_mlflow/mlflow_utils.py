@@ -60,9 +60,12 @@ def set_clf_cols(viz):
     count=0
     postfix = ''
     for name in names:
-        postfix = name.split(list(viz['model_type'])[count])[1].replace(postfix+'__', '').replace('.pkl','')
-        newname = list(viz['model_type'])[count]+postfix
-        mod_names.append(newname)
+        try:
+            postfix = name.split(list(viz['model_type'])[count])[1].replace(postfix+'__', '').replace('.pkl','')
+            newname = list(viz['model_type'])[count]+postfix
+            mod_names.append(newname)
+        except:
+            mod_names.append(str(name))
         count+=1
     
     viz.index = mod_names

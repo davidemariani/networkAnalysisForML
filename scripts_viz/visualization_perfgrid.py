@@ -44,6 +44,7 @@ def performance_grid(viz,
                      spider_line_width=4.5, 
                      spider_fill_alpha=0.1,
                      spider_margin_distance=0.25, 
+                     normalize_spider=False,
                      single_row_folds=True, 
                      folds_p_width=1200, 
                      folds_p_height=1200,
@@ -113,10 +114,16 @@ def performance_grid(viz,
                    bestFprOnly=bestFprOnly, show_legend=False)
 
     #Spider plots
+    viz_ = viz.copy()
+
+    if normalize_spider:
+        viz_.loc[spiders_params] = viz_.loc[spiders_params].apply(lambda x:(x-viz_.loc[spiders_params].min(axis=1))/(viz_.loc[spiders_params].max(axis=1)-viz_.loc[spiders_params].min(axis=1)))
+
     if single_spider:
-    
+            #data[model] = list(pd.Series(data[model]).apply(lambda x:(x-min(data[model]))/(max(data[model])-min(data[model]))))
+
         spider = spiderWebChart(spider_folds_models, spiders_params, 
-                            [viz.loc[spiders_params, m] for m in spider_folds_models], 
+                            [viz_.loc[spiders_params, m] for m in spider_folds_models], 
                             colors=colors, text_size=spider_text_size,
                                title='Overall Comparison', p_height=spider_p_height, p_width=spider_p_width, margin_distance=spider_margin_distance,
                                legend_location='top_right', show_legend=False, line_width=spider_line_width, fill_alpha=spider_fill_alpha)
@@ -138,7 +145,7 @@ def performance_grid(viz,
                 cols.append(rows)
 
             single_spider = spiderWebChart([spider_folds_models[m]], spiders_params, 
-                                    [viz.loc[spiders_params, spider_folds_models[m]]], 
+                                    [viz_.loc[spiders_params, spider_folds_models[m]]], 
                                     colors=[colors[m]], text_size=spider_text_size,
                                        title='', p_height=s_h_size, p_width=s_w_size, 
                                        margin_distance=spider_margin_distance,
