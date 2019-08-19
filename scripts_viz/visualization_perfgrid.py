@@ -46,6 +46,7 @@ def performance_grid(viz,
                      spider_margin_distance=0.25, 
                      single_row_folds=True, 
                      folds_p_width=1200, 
+                     folds_p_height=1200,
                      folds_xlabelorientation=1.55, 
                      folds_group_text_font_size='6pt',
                      folds_in_row=1, 
@@ -125,7 +126,13 @@ def performance_grid(viz,
         cols = []
         rows = []
 
-        for m in range(len(models)):
+        s_w_size = spider_p_width//folds_in_row
+        if len(spider_folds_models)%spider_in_row==0:
+            s_h_size = spider_p_height//folds_in_row
+        else:
+            s_h_size = spider_p_height//(folds_in_row+1)
+
+        for m in range(len(spider_folds_models)):
             if m%spider_in_row==0 or m==len(spider_folds_models):
                 rows = []
                 cols.append(rows)
@@ -133,11 +140,13 @@ def performance_grid(viz,
             single_spider = spiderWebChart([spider_folds_models[m]], spiders_params, 
                                     [viz.loc[spiders_params, spider_folds_models[m]]], 
                                     colors=[colors[m]], text_size=spider_text_size,
-                                       title='', p_height=spider_p_height//spider_in_row, p_width=spider_p_width//spider_in_row, 
+                                       title='', p_height=s_h_size, p_width=s_w_size, 
                                        margin_distance=spider_margin_distance,
                                        legend_location='top_right', show_legend=False, line_width=spider_line_width, fill_alpha=spider_fill_alpha)
+
+            rows.append(single_spider)
         
-            spider = gridplot(cols)
+        spider = gridplot(cols)
 
     #Validation Folds
     f = [fold for fold in viz.index if 'val_auc_fold_' in fold]
@@ -146,24 +155,43 @@ def performance_grid(viz,
 
     if single_row_folds:
 
-        folds = histfolds(spider_folds_models, folds_name, viz, plot_w=folds_p_width, title="Validation folds performance",
+        folds = histfolds(spider_folds_models, folds_name, viz, plot_w=folds_p_width, plot_h=folds_p_height, title="Validation folds performance",
                      colors=colors, xlabelorientation=folds_xlabelorientation, group_text_font_size=folds_group_text_font_size)
     else:
         cols = []
         rows = []
 
+        if len(spider_folds_models)%folds_in_row==0:
+            h_size = folds_p_height//folds_in_row
+        else:
+            h_size = folds_p_height//(folds_in_row+1)
+
         breakp = folds_in_row
 
-        for m in range(breakp, len(spider_folds_models)+1, breakp):
-            if m%breakp==0 or m==len(spider_folds_models):
+        sequence = list(range(breakp, len(spider_folds_models)+1, breakp))
+        
+        odd=False
+        if len(spider_folds_models) not in sequence:
+            odd = True
+            sequence+=[len(spider_folds_models)]
+
+        for m in sequence:
+            if m%breakp==0 or m==sequence[-1]:
                 rows = []
                 cols.append(rows)
-
-            row_folds = histfolds(spider_folds_models[m-breakp:m], folds_name, viz, plot_w=folds_p_width//folds_in_row, title="Validation folds performance",
-                         colors=colors[m-breakp:m], xlabelorientation=folds_xlabelorientation, group_text_font_size=folds_group_text_font_size)
+            
+            if odd and m==sequence[-1]:
+                
+                diff = m-sequence[sequence.index(m)-1]
+                
+                row_folds = histfolds(spider_folds_models[m-diff:m], folds_name, viz, plot_w=folds_p_width//folds_in_row*diff, plot_h=h_size, title="Validation folds performance",
+                                 colors=[colors[m]], xlabelorientation=folds_xlabelorientation, group_text_font_size=folds_group_text_font_size)
+            else:
+                row_folds = histfolds(spider_folds_models[m-breakp:m], folds_name, viz, plot_w=folds_p_width, plot_h=h_size, title="Validation folds performance",
+                                 colors=colors[m-breakp:m], xlabelorientation=folds_xlabelorientation, group_text_font_size=folds_group_text_font_size)
 
             rows.append(row_folds)
-    
+
         folds = gridplot(cols)
 
     #Spreadsheet info viz

@@ -838,8 +838,6 @@ def feature_importance(viz, model_filter, normalize=True, colors=[TTQcolor['azur
     features = list(viz.index[list(pd.Series(viz.index).str.contains('^f_', regex=True))])
     models = [m for m in list(viz.columns) if viz.loc['model_type', m] in model_filter]
 
-    print(models)
-
     mod_dict = {}
     for m in models:
         val_list = []

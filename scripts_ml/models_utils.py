@@ -318,6 +318,15 @@ def rolling_window(T, ntrain, ntest, gen_for_grid_search=False,
             yield count, traini, testi, Nsteps
 
 
+def rolling_window_idxs(indexes_tuples):
+    """
+    This function is a generator producing a similar output to rolling_window but the indexes are given as inputs and then yielded 
+    to be used in cv for GridSearch
+    """
+    for tup in indexes_tuples:
+        yield tup[0], tup[1]
+
+
 #-----------------------------------------
 # VALIDATION METHODS
 #-----------------------------------------
