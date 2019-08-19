@@ -22,8 +22,7 @@ from sklearn.metrics import precision_recall_curve, roc_curve, roc_auc_score, co
 from sklearn.linear_model import SGDClassifier
 from sklearn.ensemble import RandomForestClassifier
 
-import mlflow
-import mlflow.sklearn
+from scripts_mlflow.mlflow_utils import *
 
 
 #-----------------------------------------
@@ -436,7 +435,6 @@ def model_diag_seq(model, X_train, y_train, specify_idxs=False, train_window=600
     return results
 
 
-
 def validate_and_test(model, X_train, y_train, train_idx, test_idx, count, from_separate_sets=False, X_test=None, y_test=None):
     """
     Auxiliar function for model_diag_seq where custom fold validation is implemented.
@@ -619,168 +617,7 @@ def save_dictionary(dict, datafolder, dict_name, postfix):
             pickle.dump(dict, pickle_file)
     return filepath
    
-#-----------------------------------------
-# EXPERIMENT TRACKING
-#-----------------------------------------
 
-def list_to_string(list_):
-            """
-            This function is an auxiliar function for the mlflow tracking system.
-            It transform a list of values into a single string with comma separated values that can be reproduced for viz
-            """
-            string_=''
-
-            count=0
-            for i in list_:
-                if count!=len(list_)-1:
-                    string_+=str(i)
-                    string_+=","
-                else:
-                    string_+=str(i)
-            return string_
-
-
-def mlf_sk_tracking(experiment_name, prefix, postfix, modeltype, trainfile, testfile, datafolder,
-                    train_size, test_size, model, model_kfold, model_oos, timeSeqValid, feat_imp_dict,
-                    CrossValFolds=None, save_model=False, filename=None, filepath=None,
-                    save_results_for_viz=False, dict_name=None):
-    """
-    This function is an auxiliar function of models_loop which activates the mlflow tracking of an experiment
-    using RandomForestClassifier and/or SGDClassifier implemented in scikit-learn.
-    Inputs required are:
-    - experiment_name: the name of the experiment
-    - prefix: the prefix used for the experiment for files sourcing and saving
-    - postfix: the postfix used for the experiment for files sourcing and saving
-    - modeltype: the type of model used
-    - trainfile: the name of the training files
-    - testfile: the name of the testing files
-    - datafolder: the folder where preprocessed data of the experiment have been saved
-    - train_size: the size of the training set
-    - test_size: the size of the test set
-    - model: the model used during the experiment
-    - model_kfold: the output of the model_diag or model_diag_seq used during the experiment (dict)
-    - model_oos: the output of out of sample testing used during the experiment (dict)
-    - timeSeqValid: boolean value indicating if sequential validation has been used
-    - feat_imp_dict: a dictionary containing the feature importances
-    - save_model: boolean indicating if the model has been stored somewhere
-    - filename: the name of the model
-    - filepath: the path where the model has been saved
-    """
-
-    #checking the name of existing experiments
-    expnames = set([exp.name for exp in mlflow.tracking.MlflowClient().list_experiments()])
-
-    #creating a new experiment if its name is not among the existing ones
-    if experiment_name not in expnames:
-        print("- Creating the new experiment '{}',  the following results will be saved in it...".format(experiment_name))
-        exp_id = mlflow.create_experiment(experiment_name)
-    else: #adding new results to the existing one otherwise
-        print("- Activating existing experiment '{}', the following results will be saved in it...".format(experiment_name))
-        mlflow.set_experiment(experiment_name)
-        exp_id = mlflow.tracking.MlflowClient().get_experiment_by_name(experiment_name).experiment_id
-
-    with mlflow.start_run(experiment_id=exp_id, run_name=prefix + modeltype): #create and initialize experiment
-
-        print("- Tracking the experiment on mlflow...")
-
-        #experiment type tracking
-        mlflow.log_param("experiment_type", prefix)
-
-        trainfilepath = datafolder + prefix + trainfile + postfix+'.pkl'
-        testfilepath = datafolder + prefix + testfile + postfix+'.pkl'
-
-        #source file tracking
-        mlflow.log_param("train_file_path", trainfilepath)
-        mlflow.log_param("train_file_name", prefix + trainfile + postfix+'.pkl')
-        mlflow.log_param("test_file_path", testfilepath)
-        mlflow.log_param("test_file_name", prefix + testfile + postfix+'.pkl')
-        mlflow.log_param("train_size", train_size)
-        mlflow.log_param("test_size", test_size)
-
-        #model info and hyperparameters tracking
-        mlflow.log_param("model_type", modeltype)
-
-        if save_model:
-            if filename!=None or filepath!=None:
-                mlflow.log_param("model_filename", filename)
-                mlflow.log_param("model_filepath", filepath)
-            else:
-                print("WARNING! - filename and filepath set to 'None'! Please change them to a meaningful output path. The models output path have not been saved in mlflow!")
-        else:
-            mlflow.log_param("model_filepath", None)
-            mlflow.log_param("model_filename", None)
-
-        hpar = model.get_params()
-        for par_name in hpar.keys():
-            mlflow.log_param(par_name, hpar[par_name])
-
-        #kfold validation metrics tracking
-        auc_kf_general = round(model_kfold['auc'],3)
-
-        if not timeSeqValid:
-            mlflow.log_metric("validation_nfolds", CrossValFolds)
-
-            for fold in range(1,CrossValFolds+1):
-                auc_kf_fold = round(model_kfold['AUC_fold_'+str(fold)],3)
-                mlflow.log_metric("val_auc_fold_"+str(fold), auc_kf_fold)
-        else:
-            count=0
-            for fold in model_kfold.keys():
-                if 'AUC_fold_' in fold:
-                    auc_seq_fold = round(model_kfold[fold],3)
-                    mlflow.log_metric("val_auc_fold_"+str(count+1), auc_seq_fold)
-                    count+=1
-            mlflow.log_metric("validation_nfolds", count)
-
-
-        mlflow.log_param("roc_val_fpr", list_to_string(model_kfold['fpr']))
-        mlflow.log_param("roc_val_tpr", list_to_string(model_kfold['tpr']))
-                    
-        mlflow.log_metric("val_auc", auc_kf_general)
-
-        #test metrics tracking
-        auc = round(model_oos['auc'],3)
-        rcm = model_oos['rcm']
-
-        tnr, fpr, fnr, tpr = rcm.ravel()
-
-        mlflow.log_metric("test_auc", auc)
-        mlflow.log_metric("test_tpr", round(tpr,4)) #true positive rate
-        mlflow.log_metric("test_fpr", round(fpr,4)) #false positive rate
-        mlflow.log_metric("test_fnr", round(fnr,4)) #false negative ratee
-        mlflow.log_metric("test_tnr", round(tnr,4)) #true negative rate
-
-        cm = model_oos['cm']
-        tn, fp, fn, tp = cm.ravel()
-        mlflow.log_metric("test_tp", tp) #true positive rate
-        mlflow.log_metric("test_fp", fp) #false positive rate
-        mlflow.log_metric("test_fn", fn) #false negative ratee
-        mlflow.log_metric("test_tn", tn) #true negative rate
-
-        mlflow.log_param("roc_test_fpr", list_to_string(model_oos['fpr']))
-        mlflow.log_param("roc_test_tpr", list_to_string(model_oos['tpr']))
-
-
-        #features importances tracking
-        for f in feat_imp_dict.keys():
-            mlflow.log_metric("f_"+f, feat_imp_dict[f])
-
-        #MODEL STORAGE
-        #storing the model file as pickle
-        mlflow.sklearn.log_model(model, "model")
-
-        #ARTIFACTS STORAGE
-        #storing pipeline-processed trainset and testset
-        mlflow.log_artifact(trainfilepath, "train_file")
-        mlflow.log_artifact(testfilepath, "test_file")
-
-        if save_results_for_viz:
-            if dict_name!=None:
-                mlflow.log_artifact(dict_name, "results_dict_for_viz")
-            else:
-                print("WARNING! - dictiname set to 'None'! Please change it to a meaningful output path. The dict viz output has not been saved in mlflow as artifact!")
-
-        print("- Experiment tracked.")
 
 #-----------------------------------------
 # MAIN

@@ -157,32 +157,6 @@ def show_stats(inst, buyer, seller):
               c, seller[c].mean(), sum(seller[c] > 0), 100*sum(seller[c]>0)/Ns))
 
 
-def set_clf_cols(viz):
-    """
-    This is an auxiliar function for building the performance gridplot viz.
-    It gets a visualization dataframe as inputs and it returns the same dataframe adapted for gridplot viz.
-    """
-    
-    viz = viz.copy()
-    names = viz['model_filename']
-    
-    mod_names = []
-    
-    count=0
-    postfix = ''
-    for name in names:
-        postfix = name.split(list(viz['model_type'])[count])[1].replace(postfix+'__', '').replace('.pkl','')
-        newname = list(viz['model_type'])[count]+postfix
-        mod_names.append(newname)
-        count+=1
-    
-    viz.index = mod_names
-    
-    return viz.transpose()
-
-
-
-
 #DATASETS COMPARISON
 
 #base empty dataframe structure
