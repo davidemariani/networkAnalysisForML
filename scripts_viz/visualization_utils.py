@@ -829,3 +829,60 @@ def histfolds(models, metrics, vizdict, plot_h=250, plot_w=250, colors = [TTQcol
     return p
 
 
+def feature_importance(viz, model_filter, normalize=True, colors=[TTQcolor['azureBlue'], 
+                                                                  TTQcolor['richOrange'], TTQcolor['algae'],
+                                                                  TTQcolor['yell'], TTQcolor['redBrown'], TTQcolor['bloodRed']],
+                       range_padding = 0.1, xmajor_label_orientation = 1.55, xgroup_text_font_size='10pt',
+                       xgroup_label_orientation = 1.57):
+
+    features = list(viz.index[list(pd.Series(viz.index).str.contains('^f_', regex=True))])
+    models = [m for m in list(viz.columns) if viz.loc['model_type', m] in model_filter]
+
+    print(models)
+
+    mod_dict = {}
+    for m in models:
+        val_list = []
+        for f in features:
+            val_list.append(viz.loc[f, m])
+        mod_dict[m] = val_list 
+        
+    data = {**{'features': features}, **mod_dict}
+
+    x=[]
+    colors_list = []
+
+    for feat in features:
+        count=0
+        for mod in models:
+            x.append((feat, mod))
+            colors_list.append(colors[count])
+            count+=1
+
+    if normalize:
+        for model in models:
+            data[model] = list(pd.Series(data[model]).apply(lambda x:(x-min(data[model]))/(max(data[model])-min(data[model]))))
+        
+    counts = []
+    for featval in range(len(data[models[0]])):
+        for model in models:
+            counts.append(data[model][featval])
+        
+    source = ColumnDataSource(data=dict(x=x, counts=counts, color=colors_list))
+
+    p = figure(x_range=FactorRange(*x), plot_width=1200, plot_height=500, title='Normalized feature importances',
+               toolbar_location=None, tools="")
+
+    p.vbar(x='x', top='counts', width=0.9, source=source, color='color')
+
+    p.x_range.range_padding = range_padding
+    p.xaxis.major_label_orientation = xmajor_label_orientation
+    p.xaxis.major_tick_line_color = None
+    p.xaxis.major_label_text_font_size = '0pt'
+    p.xaxis.group_text_font_size = '10pt'
+    p.xaxis.group_label_orientation = xgroup_label_orientation
+    p.xgrid.grid_line_color = None
+
+    return p
+
+
