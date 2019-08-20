@@ -4,7 +4,6 @@
 # Programme    : Msc Data Science                                                  #
 # Script Name  : ann_utils.py                                                      #
 # Description  : utils for artificial neural networks implementation               #
-# Version      : 0.2                                                               #
 #==================================================================================#
 # This file contains functions do implement and prototype artificial neural        #
 # networks using tensorflow 2.0 and keras                                          #

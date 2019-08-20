@@ -351,7 +351,7 @@ def model_diag(model, X_train, y_train, CrossValFolds=5, scoring = {'AUC':'roc_a
     
     print("AUC {:.3f}".format(auc))
 
-    results = {'fpr':fpr, 'tpr':tpr, 'auc':auc}
+    results = {'fpr':fpr, 'tpr':tpr, 'auc':auc, 'predictions':y_scores}
 
     for score in list(scoring.keys()):
         for fold in range(1, len(validation['test_'+score])+1): #saving auc score at each fold of cross validation
@@ -518,7 +518,7 @@ def model_oostest(model, X_test, y_test):
 
     print("AUC {:.3f}".format(auc))
 
-    return {'fpr':fpr, 'tpr':tpr, 'auc':auc, 'rcm':rcm, 'cm':cm}
+    return {'fpr':fpr, 'tpr':tpr, 'auc':auc, 'rcm':rcm, 'cm':cm, 'predictions':y_scores}
 
 
 #-----------------------------------------

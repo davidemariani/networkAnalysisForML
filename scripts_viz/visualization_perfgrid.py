@@ -97,15 +97,15 @@ def performance_grid(viz,
 
 
     #ROC curves
-    val_roc = plot_rocs(roc_val_data, label = list(viz.columns), title_lab = 'Validation performance', 
+    val_roc = plot_rocs(roc_val_data, title_lab = 'Validation performance', 
                p_width=rocs_p_width, p_height=rocs_p_height, line_width=rocs_line_width,
                     colors = colors, legend_font_size=legend_font_size, fpr_font_size=fpr_font_size,
-                   bestFprOnly=bestFprOnly, show_legend=False)
+                   bestFprOnly=bestFprOnly, show_legend=True)
 
-    test_roc = plot_rocs(roc_test_data, label = list(viz.columns), title_lab = 'Test performance', 
+    test_roc = plot_rocs(roc_test_data, title_lab = 'Test performance', 
                p_width=rocs_p_width, p_height=rocs_p_height, line_width=rocs_line_width,
                     colors = colors, legend_font_size=legend_font_size, fpr_font_size=fpr_font_size,
-                   bestFprOnly=bestFprOnly, show_legend=False)
+                   bestFprOnly=bestFprOnly, show_legend=True)
 
     #Validation Folds
     f = [fold for fold in viz.index if 'val_auc_fold_' in fold]
