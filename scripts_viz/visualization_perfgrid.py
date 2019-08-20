@@ -35,15 +35,6 @@ def performance_grid(viz,
                      rocs_p_width=600, 
                      rocs_p_height=600,
                      rocs_line_width=2, 
-                     single_spider=True, 
-                     spider_in_row=1, 
-                     spiders_params = ['tp_rate', 'tn_rate', 'fp_rate', 'fn_rate', 'test_auc', 'val_auc'],
-                     spider_p_width=300, 
-                     spider_p_height=300, 
-                     spider_text_size='12pt', 
-                     spider_line_width=4.5, 
-                     spider_fill_alpha=0.1,
-                     spider_margin_distance=0.25, 
                      normalize_spider=False,
                      single_row_folds=True, 
                      folds_p_width=1200, 
@@ -55,7 +46,17 @@ def performance_grid(viz,
                      plot_feat_importance=True,
                      normalize_importance=True,
                      fimp_text_group_size = '10pt',
-                     colors=[TTQcolor['azureBlue'], TTQcolor['richOrange'], TTQcolor['algae'], TTQcolor['yell'], TTQcolor['redBrown'], TTQcolor['bloodRed']]):
+                     colors=[TTQcolor['azureBlue'], TTQcolor['richOrange'], TTQcolor['algae'], TTQcolor['yell'], TTQcolor['redBrown'], TTQcolor['bloodRed']],
+                     add_spider = False,
+                     single_spider=True, 
+                     spider_in_row=1, 
+                     spiders_params = ['tp_rate', 'tn_rate', 'fp_rate', 'fn_rate', 'test_auc', 'val_auc'],
+                     spider_p_width=300, 
+                     spider_p_height=300, 
+                     spider_text_size='12pt', 
+                     spider_line_width=4.5, 
+                     spider_fill_alpha=0.1,
+                     spider_margin_distance=0.25, ):
     """
     This function create a gridplot containing several charts for model performance evaluation:
     - ROC curves comparison for testing and validation phases
@@ -105,48 +106,6 @@ def performance_grid(viz,
                p_width=rocs_p_width, p_height=rocs_p_height, line_width=rocs_line_width,
                     colors = colors, legend_font_size=legend_font_size, fpr_font_size=fpr_font_size,
                    bestFprOnly=bestFprOnly, show_legend=False)
-
-    #Spider plots
-    viz_ = viz.copy()
-
-    if normalize_spider:
-        viz_.loc[spiders_params] = viz_.loc[spiders_params].apply(lambda x:(x-viz_.loc[spiders_params].min(axis=1))/(viz_.loc[spiders_params].max(axis=1)-viz_.loc[spiders_params].min(axis=1)))
-
-    if single_spider:
-            #data[model] = list(pd.Series(data[model]).apply(lambda x:(x-min(data[model]))/(max(data[model])-min(data[model]))))
-
-        spider = spiderWebChart(spider_folds_models, spiders_params, 
-                            [viz_.loc[spiders_params, m] for m in spider_folds_models], 
-                            colors=colors, text_size=spider_text_size,
-                               title='Overall Comparison', p_height=spider_p_height, p_width=spider_p_width, margin_distance=spider_margin_distance,
-                               legend_location='top_right', show_legend=False, line_width=spider_line_width, fill_alpha=spider_fill_alpha)
-
-    else:
-    #distribution over multiple rows
-        cols = []
-        rows = []
-
-        s_w_size = spider_p_width//folds_in_row
-        if len(spider_folds_models)%spider_in_row==0:
-            s_h_size = spider_p_height//folds_in_row
-        else:
-            s_h_size = spider_p_height//(folds_in_row+1)
-
-        for m in range(len(spider_folds_models)):
-            if m%spider_in_row==0 or m==len(spider_folds_models):
-                rows = []
-                cols.append(rows)
-
-            single_spider = spiderWebChart([spider_folds_models[m]], spiders_params, 
-                                    [viz_.loc[spiders_params, spider_folds_models[m]]], 
-                                    colors=[colors[m]], text_size=spider_text_size,
-                                       title='', p_height=s_h_size, p_width=s_w_size, 
-                                       margin_distance=spider_margin_distance,
-                                       legend_location='top_right', show_legend=False, line_width=spider_line_width, fill_alpha=spider_fill_alpha)
-
-            rows.append(single_spider)
-        
-        spider = gridplot(cols)
 
     #Validation Folds
     f = [fold for fold in viz.index if 'val_auc_fold_' in fold]
@@ -204,17 +163,79 @@ def performance_grid(viz,
     else:
         ss = [modelSpreadsheet(**spreadsheet_settings[0])]
 
-    #feature importance and output
-    if plot_feat_importance:
-        fi = feature_importance(viz, spreadsheet_models, normalize = normalize_importance, colors=colors, xgroup_text_font_size=fimp_text_group_size)
+    if add_spider:
+        #Spider plots
+        viz_ = viz.copy()
 
-        l = gridplot([ss,
-              [row(val_roc, folds)],
-              [row(test_roc, spider)],[fi]])
+        if normalize_spider:
+            if len(spreadsheet_models)==1:
+                for param in spiders_params:
+                    values = viz_.loc[param, spider_folds_models].values.astype(float)
+                    viz_.loc[param, spider_folds_models] = (values-min(values))/(max(values)-min(values))
+            else:
+                print("SPIDER TRYING TO DISPLAY INFO FOR MORE THAN ONE MODEL TYPE - NORMALIZATION IS DISABLED")
 
+        if single_spider:
+                #data[model] = list(pd.Series(data[model]).apply(lambda x:(x-min(data[model]))/(max(data[model])-min(data[model]))))
+
+            spider = spiderWebChart(spider_folds_models, spiders_params, 
+                                [viz_.loc[spiders_params, m] for m in spider_folds_models], 
+                                colors=colors, text_size=spider_text_size,
+                                   title='Overall Comparison', p_height=spider_p_height, p_width=spider_p_width, margin_distance=spider_margin_distance,
+                                   legend_location='top_right', show_legend=False, line_width=spider_line_width, fill_alpha=spider_fill_alpha)
+
+        else:
+        #distribution over multiple rows
+            cols = []
+            rows = []
+
+            s_w_size = spider_p_width//folds_in_row
+            if len(spider_folds_models)%spider_in_row==0:
+                s_h_size = spider_p_height//folds_in_row
+            else:
+                s_h_size = spider_p_height//(folds_in_row+1)
+
+            for m in range(len(spider_folds_models)):
+                if m%spider_in_row==0 or m==len(spider_folds_models):
+                    rows = []
+                    cols.append(rows)
+
+                single_spider = spiderWebChart([spider_folds_models[m]], spiders_params, 
+                                        [viz_.loc[spiders_params, spider_folds_models[m]]], 
+                                        colors=[colors[m]], text_size=spider_text_size,
+                                           title='', p_height=s_h_size, p_width=s_w_size, 
+                                           margin_distance=spider_margin_distance,
+                                           legend_location='top_right', show_legend=False, line_width=spider_line_width, fill_alpha=spider_fill_alpha)
+
+                rows.append(single_spider)
+        
+            spider = gridplot(cols)
+
+        #feature importance and output if there's spider
+        if plot_feat_importance:
+            fi = feature_importance(viz, spreadsheet_models, normalize = normalize_importance, colors=colors, xgroup_text_font_size=fimp_text_group_size)
+
+            l = gridplot([ss,
+                  [row(val_roc, folds)],
+                  [row(test_roc, spider)],[fi]])
+
+        else:
+            l = gridplot([ss,
+                  [row(val_roc, folds)],
+                  [row(test_roc, spider)]])
     else:
-        l = gridplot([ss,
-              [row(val_roc, folds)],
-              [row(test_roc, spider)]])
+        #feature importance and output if there's no spider
+        if plot_feat_importance:
+            fi = feature_importance(viz, spreadsheet_models, normalize = normalize_importance, colors=colors, xgroup_text_font_size=fimp_text_group_size)
+
+            l = gridplot([ss,
+                  [row(val_roc, test_roc)],
+                  [folds],[fi]])
+
+        else:
+            l = gridplot([ss,
+                  [row(val_roc, test_roc)],
+                  [folds]])
+
 
     return l
