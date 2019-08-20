@@ -51,14 +51,7 @@ def performance_grid(viz,
                      folds_xlabelorientation=1.55, 
                      folds_group_text_font_size='6pt',
                      folds_in_row=1, 
-                     spreadsheet_cols = ['n_estimators', 'max_depth', 'max_features', 'max_leaf_nodes', 
-                                        'min_samples_leaf', 'min_samples_split', 'bootstrap',
-                                        'criterion', 'val_auc', 'test_auc'],
-                     spr_index_header = 'RF',
-                     spr_height=80, 
-                     spr_width=1200, 
-                     spr_index_width=25,
-                     spr_row_height=25,
+                     spreadsheet_settings = {},
                      plot_feat_importance=True,
                      normalize_importance=True,
                      fimp_text_group_size = '10pt',
@@ -202,20 +195,25 @@ def performance_grid(viz,
         folds = gridplot(cols)
 
     #Spreadsheet info viz
-    ss = modelSpreadsheet(viz, spreadsheet_cols, spreadsheet_models, color_cells=True, colors=colors[:len(spider_folds_models)],
-                      index_header=spr_index_header, height=spr_height, width=spr_width, index_width=spr_index_width,
-                     row_height=spr_row_height)
+    if len(spreadsheet_settings)>1:
+        ss = []
+        for sset in spreadsheet_settings:
+            ss.append(modelSpreadsheet(**sset))
+        
+        ss = [column(ss)]
+    else:
+        ss = [modelSpreadsheet(**spreadsheet_settings[0])]
 
     #feature importance and output
     if plot_feat_importance:
         fi = feature_importance(viz, spreadsheet_models, normalize = normalize_importance, colors=colors, xgroup_text_font_size=fimp_text_group_size)
 
-        l = gridplot([[ss],
+        l = gridplot([ss,
               [row(val_roc, folds)],
               [row(test_roc, spider)],[fi]])
 
     else:
-        l = gridplot([[ss],
+        l = gridplot([ss,
               [row(val_roc, folds)],
               [row(test_roc, spider)]])
 
