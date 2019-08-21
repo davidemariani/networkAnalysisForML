@@ -72,24 +72,25 @@ def performance_grid(viz,
     if model_filter == None:
         roc_val_data = [{'fpr':[float(v) for v in viz.loc['roc_val_fpr',model].split(',')[:-1]],
                     'tpr':[float(v) for v in viz.loc['roc_val_tpr',model].split(',')[:-1]],
-                     'auc':viz.loc['val_auc',model]} for model in viz.columns]
+                     'auc':viz.loc['val_auc',model]} for model in sorted(list(viz.columns))]
 
         roc_test_data = [{'fpr':[float(v) for v in viz.loc['roc_test_fpr',model].split(',')[:-1]],
                     'tpr':[float(v) for v in viz.loc['roc_test_tpr',model].split(',')[:-1]],
-                     'auc':viz.loc['test_auc',model]} for model in viz.columns]
+                     'auc':viz.loc['test_auc',model]} for model in sorted(list(viz.columns))]
 
-        spider_folds_models = [m for m in list(viz.columns)]
+        spider_folds_models = [m for m in sorted(list(viz.columns))]
 
-        spreadsheet_models = [m for m in list(viz.loc['model_type'].unique())]
+        spreadsheet_models = [m for m in sorted(list(viz.loc['model_type'].unique()))]
 
     else:
+        model_filter = sorted(model_filter)
         roc_val_data = [{'fpr':[float(v) for v in viz.loc['roc_val_fpr',model].split(',')[:-1]],
                     'tpr':[float(v) for v in viz.loc['roc_val_tpr',model].split(',')[:-1]],
-                     'auc':viz.loc['val_auc',model]} for model in viz.columns if viz.loc['model_type', model] in model_filter]
+                     'auc':viz.loc['val_auc',model]} for model in sorted(list(viz.columns)) if viz.loc['model_type', model] in model_filter]
 
         roc_test_data = [{'fpr':[float(v) for v in viz.loc['roc_test_fpr',model].split(',')[:-1]],
                     'tpr':[float(v) for v in viz.loc['roc_test_tpr',model].split(',')[:-1]],
-                     'auc':viz.loc['test_auc',model]} for model in viz.columns if viz.loc['model_type', model] in model_filter]
+                     'auc':viz.loc['test_auc',model]} for model in sorted(list(viz.columns)) if viz.loc['model_type', model] in model_filter]
 
         spider_folds_models = [m for m in list(viz.columns) if viz.loc['model_type', m] in model_filter]
 

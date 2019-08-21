@@ -112,7 +112,7 @@ scoring = {"AUC": "roc_auc", "Accuracy": make_scorer(accuracy_score)}
 
 mlp_grid = GridSearchCV(estimator = mlp, param_grid = param_grid, 
                                cv = rolling_window_idxs(indexes_tuples), 
-                               verbose=1, n_jobs =7, scoring=scoring, refit='AUC')
+                               verbose=1, n_jobs =5, scoring=scoring, refit='AUC')
 
 # Fit the grid search model
 print("Fitting the grid...")

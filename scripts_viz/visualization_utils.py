@@ -877,6 +877,8 @@ def feature_importance(viz, model_filter, normalize=True, colors=[TTQcolor['azur
     p.xaxis.major_label_orientation = xmajor_label_orientation
     p.xaxis.major_tick_line_color = None
     p.xaxis.major_label_text_font_size = '0pt'
+    p.xaxis.major_label_text_color = 'white'
+    p.xaxis.major_label_text_alpha = 0.0
     p.xaxis.group_text_font_size = '10pt'
     p.xaxis.group_label_orientation = xgroup_label_orientation
     p.xgrid.grid_line_color = None
