@@ -103,7 +103,7 @@ def create_directed_graphs(components, df, red_coeff, energy='imp_energy'):
 
     #calculating flow value on the whole network
     df_whole_temp = df.copy()
-    df_whole_temp['capacity'] = round(df[energy]/(red_coeff),3)
+    df_whole_temp['capacity'] = [np.sign(cap)*cap if cap!=0 else 1 for cap in round(df[energy]/(red_coeff),3)]
     df_whole_temp['capacity'] = df_whole_temp['capacity'].astype(int)
 
     df_whole_temp['weight'] = abs(round(red_coeff/df_whole_temp['capacity'],3))
