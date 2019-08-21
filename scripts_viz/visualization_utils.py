@@ -19,7 +19,7 @@ import math
 
 #bokeh
 from bokeh.plotting import figure
-from bokeh.models import LinearAxis, Range1d, SingleIntervalTicker, AdaptiveTicker, ColumnDataSource, FactorRange, LabelSet, HoverTool, Label, BoxZoomTool, ResetTool
+from bokeh.models import LinearAxis, Range1d, SingleIntervalTicker, AdaptiveTicker, ColumnDataSource, FactorRange, LabelSet, HoverTool, Label, BoxZoomTool, ResetTool, Span
 from bokeh.models.formatters import BasicTickFormatter
 from bokeh.models.widgets import DataTable, TableColumn, HTMLTemplateFormatter
 from bokeh.models.glyphs import Text
@@ -818,6 +818,10 @@ def histfolds(models, metrics, vizdict, plot_h=250, plot_w=250, colors = [TTQcol
 
     p.vbar(x='x', top='counts', width=barwidth, source=source, color='color')
 
+    mid_line = Span(location=0.5, dimension='width', line_color='red', line_width=2, line_dash='dashed')
+
+    p.add_layout(mid_line)
+
     p.y_range.start = 0
     p.y_range.end = 1
     p.x_range.range_padding = 0.1
@@ -868,7 +872,12 @@ def feature_importance(viz, model_filter, normalize=True, colors=[TTQcolor['azur
         
     source = ColumnDataSource(data=dict(x=x, counts=counts, color=colors_list))
 
-    p = figure(x_range=FactorRange(*x), plot_width=1200, plot_height=500, title='Normalized feature importances',
+    if normalize:
+        title = 'Normalized feature importances'
+    else:
+        title = 'Feature importances'
+
+    p = figure(x_range=FactorRange(*x), plot_width=1200, plot_height=500, title=title,
                toolbar_location=None, tools="")
 
     p.vbar(x='x', top='counts', width=0.9, source=source, color='color')
