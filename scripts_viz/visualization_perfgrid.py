@@ -84,6 +84,7 @@ def performance_grid(viz,
 
     else:
         model_filter = sorted(model_filter)
+
         roc_val_data = [{'fpr':[float(v) for v in viz.loc['roc_val_fpr',model].split(',')[:-1]],
                     'tpr':[float(v) for v in viz.loc['roc_val_tpr',model].split(',')[:-1]],
                      'auc':viz.loc['val_auc',model]} for model in sorted(list(viz.columns)) if viz.loc['model_type', model] in model_filter]
@@ -92,7 +93,7 @@ def performance_grid(viz,
                     'tpr':[float(v) for v in viz.loc['roc_test_tpr',model].split(',')[:-1]],
                      'auc':viz.loc['test_auc',model]} for model in sorted(list(viz.columns)) if viz.loc['model_type', model] in model_filter]
 
-        spider_folds_models = [m for m in list(viz.columns) if viz.loc['model_type', m] in model_filter]
+        spider_folds_models = [m for m in sorted(list(viz.columns)) if viz.loc['model_type', m] in model_filter]
 
         spreadsheet_models = model_filter
 
@@ -172,7 +173,15 @@ def performance_grid(viz,
             if len(spreadsheet_models)==1:
                 for param in spiders_params:
                     values = viz_.loc[param, spider_folds_models].values.astype(float)
-                    viz_.loc[param, spider_folds_models] = (values-min(values))/(max(values)-min(values))
+                    if len(set(values))>1:
+                        viz_.loc[param, spider_folds_models] = values/(max(values)) # (values-min(values))/(max(values)-min(values))
+                    else:
+                        if abs(values[0])==0:
+                            viz_.loc[param, spider_folds_models]=0
+                        else:
+                            viz_.loc[param, spider_folds_models]=1
+                        
+
             else:
                 print("SPIDER TRYING TO DISPLAY INFO FOR MORE THAN ONE MODEL TYPE - NORMALIZATION IS DISABLED")
 

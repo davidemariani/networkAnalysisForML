@@ -46,7 +46,7 @@ def list_to_string(list_):
             return string_
 
 
-def set_clf_cols(viz):
+def set_clf_cols(viz, abbr_dict={"RandomForestClassifier":"RF", "SGDClassifier":"SGD"}):
     """
     This is an auxiliar function for create_exp_df.
     It gets a visualization dataframe as inputs and it returns the same dataframe adapted for gridplot viz.
@@ -62,7 +62,9 @@ def set_clf_cols(viz):
     for name in names:
         try:
             postfix = name.split(list(viz['model_type'])[count])[1].replace(postfix+'__', '').replace('.pkl','')
-            newname = list(viz['model_type'])[count]+postfix
+
+            types = [abbr_dict[i] if i in abbr_dict.keys() else i for i in list(viz['model_type'])]
+            newname = types[count]+postfix
             mod_names.append(newname)
         except:
             mod_names.append(str(name))
@@ -225,7 +227,14 @@ def mlf_sk_tracking(experiment_name, prefix, postfix, modeltype, trainfile, test
 # EXPERIMENT RETRIEVAL
 #-----------------------------------------
 
-def create_exp_df(experiment):
+to_transform_to_float = ['eta0', 'n_iter_no_change', 'max_iter', 'alpha', 'learning_rate', 'loss', 'val_auc', 'test_auc', 
+                         'n_estimators', 'max_depth', 'max_features', 'max_leaf_nodes', 'min_samples_leaf', 'min_samples_split', 
+                         'batch_size', 'epochs_actual', 'class_1_weight', 'hidden_layers_no', 
+                         'hidden_nodes', 'tr_accuracy']
+
+
+
+def create_exp_df(experiment, to_float_list = to_transform_to_float):
     """
     This function, given the experiment name, retrieves experiment data from mlflow and include them in a pandas dataframe
     """
@@ -279,6 +288,13 @@ def create_exp_df(experiment):
         runs_df_list.append(df_base_c)
     viz = pd.concat(runs_df_list, axis=1).transpose().dropna(how='all') 
     viz = set_clf_cols(viz)
+
+    for field in to_transform_to_float:
+        if field in viz.index:
+            try:
+                viz.loc[field] = viz.loc[field].apply(pd.to_numeric, errors='coerce')
+            except:
+                pass
 
     viz.loc['tp_rate'] = viz.loc['test_tp']/(viz.loc['test_tp'] + viz.loc['test_fn'])
     viz.loc['tn_rate'] = viz.loc['test_tn']/(viz.loc['test_tn'] + viz.loc['test_fp'])
