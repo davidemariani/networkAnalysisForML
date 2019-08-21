@@ -94,7 +94,7 @@ optimizer = [RMSprop(), Adam(), SGD()]
 
 batch_size = [128, 256, 512, 1024, 2048]
 
-nb_epoch = [50, 100, 200, 500]
+epochs = [50, 100, 200, 500]
 
 param_grid = {'hidden_layers_no': hidden_layers_no,
                'hidden_nodes': hidden_nodes,
@@ -103,8 +103,10 @@ param_grid = {'hidden_layers_no': hidden_layers_no,
                'input_shape': input_shape,
                'optimizer': optimizer,
                'batch_size': batch_size,
-              'nb_epoch':nb_epoch,
-              'print_summary': [False]
+              'epochs':epochs,
+              'print_summary': [False],
+              'metrics': [['accuracy']],
+              'reset_backend':[True]
                }
 
 
@@ -112,7 +114,7 @@ scoring = {"AUC": "roc_auc", "Accuracy": make_scorer(accuracy_score)}
 
 mlp_grid = GridSearchCV(estimator = mlp, param_grid = param_grid, 
                                cv = rolling_window_idxs(indexes_tuples), 
-                               verbose=1, n_jobs =5, scoring=scoring, refit='AUC')
+                               verbose=0, n_jobs =7, scoring=scoring, refit='AUC')
 
 # Fit the grid search model
 print("Fitting the grid...")

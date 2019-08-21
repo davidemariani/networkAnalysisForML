@@ -27,6 +27,7 @@ import tensorflow as tf
 from tensorflow.keras.wrappers.scikit_learn import KerasClassifier
 from tensorflow.keras.regularizers import l1, l2
 from tensorflow.keras.optimizers import RMSprop, Adam
+from tensorflow.keras import backend as K
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 from tensorflow.keras.callbacks import Callback
@@ -66,7 +67,8 @@ def create_mlp_model(input_shape = 16,
                      kernel_initializer = tf.keras.initializers.lecun_uniform(seed=42),
                      bias_initializer = tf.keras.initializers.Zeros(),
                      dropout = None,
-                    print_summary=True):
+                    print_summary=True,
+                    reset_backend=False):
     
     """
     This function creates a multilayer percpetron using keras API.
@@ -74,8 +76,11 @@ def create_mlp_model(input_shape = 16,
     activation function for each hidden layer (list of activation functions), random seed, output function (activation function), 
     optimizer (training optimizer function), loss function, metrics to monitor, regularizer, option to print the summary of architecture
     """
-   
-    
+    if reset_backend:
+        if K.backend() == 'tensorflow':
+            print("---------CLEARING THE BACKEND")
+            K.clear_session()
+            tf.keras.backend.set_learning_phase(1)
     
     input_layer = [tf.keras.layers.Dense(hidden_nodes[0], input_shape=[input_shape], activation=hl_activations[0], 
                                         kernel_initializer=kernel_initializer, bias_initializer=bias_initializer)] 
