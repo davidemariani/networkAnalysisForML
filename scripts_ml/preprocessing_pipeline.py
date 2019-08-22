@@ -356,11 +356,13 @@ def preprocessing_pipeline(df, feat_str, feat_quant, feat_exp, feat_date, target
     return y_train, X_train, y_test, X_test, feature_labels
 
 
+
 def preproc_pipeline_timeseq(df, feat_str, feat_quant, feat_exp, feat_date, target_feature, testset_control_feature, experimentname, 
-                             bg_settings_dicts, testdate=datetime.datetime(2018, 4, 30), train_window=12000, test_window=3000, #indexWise = False, 
+                             bg_settings_dicts, testdate=datetime.datetime(2018, 4, 30), train_window=12000, test_window=3000, #indexWise = False,
+                             use_previous_whole_bg = True,
                              whole_network_with_bg_file_path = "../data/04_instrumentsdf_bondgraph.pkl",
                              save_to_file=False, outputpath="../data/", prefix='', decompose_currency=False,
-                             validation_prep_only=False):
+                             validation_prep_only=False, train_test_prep_only=False):
     """
     This function generate a training set and a test set rebuilding for each of them the bond graph features, preventing the time leak problem.
     It also generates a number of folds specified with the rolling_window function (which requires train and test windows size) recreating the same
@@ -371,6 +373,9 @@ def preproc_pipeline_timeseq(df, feat_str, feat_quant, feat_exp, feat_date, targ
     It still uses the full bond graph dataset for extracting the test set for final stage.
     Setting validation_prep_only to True only the validation folds are created.
     """
+    if validation_prep_only and train_test_prep_only:
+        print("BOTH validation_prep_only AND test_prep_only ARE SET TO TRUE - the process is interrupted...")
+        return
 
     df = df.copy()
 
@@ -383,7 +388,7 @@ def preproc_pipeline_timeseq(df, feat_str, feat_quant, feat_exp, feat_date, targ
 
     preproc_pipeline = features_pipeline(feat_str, feat_quant, feat_exp, feat_date)
 
-    print("---------Macro train split-----------")
+    print("---------MACRO TRAIN SPLIT-----------")
     #macro-train split
     train_all = time_train_test(df, testset_control_feature, testdate)[0]
     train_all_bg = train_all.copy()
@@ -397,8 +402,21 @@ def preproc_pipeline_timeseq(df, feat_str, feat_quant, feat_exp, feat_date, targ
             train_all_bg = add_bg_features(**{**{'df':train_all_bg}, **set_dict}) #adding bg features
 
         #test split with all bg features
-        print("---------Macro test split-----------")
-        full_df = pd.read_pickle(whole_network_with_bg_file_path)
+        print("---------MACRO TEST SPLIT-----------")
+
+        if use_previous_whole_bg:
+            print("Reading full bond graph df from previously created pkl {}".format(whole_network_with_bg_file_path))
+            full_df = pd.read_pickle(whole_network_with_bg_file_path)
+
+        else:
+            print("Extracting bond graph features for the whole network")
+            count_2=0
+            full_df = df.copy()
+            for set_dict in bg_settings_dicts:
+                count_2+=1
+                print("---------Adding bond graph features {} of {}-----------".format(count_2, len(bg_settings_dicts)))
+                full_df = add_bg_features(**{**{'df':full_df}, **set_dict}) #adding bg features
+
         if decompose_currency:
             print("Decomposing currency column from full dataset to multiple columns with boolean values...")
             for c in full_df.currency.unique():
@@ -418,129 +436,134 @@ def preproc_pipeline_timeseq(df, feat_str, feat_quant, feat_exp, feat_date, targ
                 os.mkdir(outputfolder)
 
             save_preproc_files(outputfolder, prefix1+prefix, preproc_pipeline, y_train, X_train, y_test, X_test, feature_labels)
+    
+    if not train_test_prep_only:
+        print("---------Sequential validation splits-----------")
+        #creating validation dataset
+        T = train_all.shape[0]
+        if train_window<1: #given as share of T
+            train_window = np.floor(train_window*T)
+        if test_window<1:
+            test_window = np.floor(test_window*T)
 
-    print("---------Sequential validation splits-----------")
-    #creating validation dataset
-    T = train_all.shape[0]
-    if train_window<1: #given as share of T
-        train_window = np.floor(train_window*T)
-    if test_window<1:
-        test_window = np.floor(test_window*T)
+        fold_generator = rolling_window(T, train_window, test_window)
 
-    fold_generator = rolling_window(T, train_window, test_window)
+        folds_idx = []
 
-    folds_idx = []
+        valid_train = np.array([])
 
-    valid_train = np.array([])
+        #placeholders
+        X_valid_train = []
+        y_valid_train = []
+        X_valid_test = []
+        y_valid_test = []
+        full_test_window_df_bg = pd.DataFrame()
 
-    #placeholders
-    X_valid_train = []
-    y_valid_train = []
-    X_valid_test = []
-    y_valid_test = []
-    full_test_window_df_bg = pd.DataFrame()
+        for count, train_idx, test_idx, Nsteps in fold_generator: #rolling window applied to training dataset for calibration
+            print("---------Train test for validation fold {}-----------".format(count))
+            train_idx = train_idx.astype(int)
+            test_idx = test_idx.astype(int)
 
-    for count, train_idx, test_idx, Nsteps in fold_generator: #rolling window applied to training dataset for calibration
-        print("---------Train test for validation fold {}-----------".format(count))
-        train_idx = train_idx.astype(int)
-        test_idx = test_idx.astype(int)
+            #for creating test df, the whole network before the last test idx needs to be generated and used as input for bg extraction
+            full_test_window_idx = np.concatenate([train_idx, test_idx], axis=None) #index of the train window + test window
+            full_test_window_df = train_all.iloc[:test_idx[-1]+1]
 
-        #for creating test df, the whole network before the last test idx needs to be generated and used as input for bg extraction
-        full_test_window_idx = np.concatenate([train_idx, test_idx], axis=None) #index of the train window + test window
-        full_test_window_df = train_all.iloc[:test_idx[-1]+1]
+            #for df train the last train index is considered
+            full_train_window_df = train_all.iloc[:train_idx[-1]+1]
 
-        #for df train the last train index is considered
-        full_train_window_df = train_all.iloc[:train_idx[-1]+1]
+            count_2 = 0
+            if count==0:
 
-        count_2 = 0
-        if count==0:
+                full_test_window_df_bg = full_test_window_df.copy()
 
-            full_test_window_df_bg = full_test_window_df.copy()
+                full_train_window_df_bg = full_train_window_df.copy()
 
-            full_train_window_df_bg = full_train_window_df.copy()
+                for set_dict in bg_settings_dicts:
+                    count_2+=1
+                    print("---------Adding bond graph features {} of {} to TRAIN SET for fold {}-----------".format(count_2, len(bg_settings_dicts), count))
+                    full_train_window_df_bg = add_bg_features(**{**{'df':full_train_window_df_bg}, **set_dict})
 
-            for set_dict in bg_settings_dicts:
-                count_2+=1
-                print("---------Adding bond graph features {} of {} to TRAIN SET for fold {}-----------".format(count_2, len(bg_settings_dicts), count))
-                full_train_window_df_bg = add_bg_features(**{**{'df':full_train_window_df_bg}, **set_dict})
+                    print("---------Adding bond graph features {} of {} to TEST SET for fold {}-----------".format(count_2, len(bg_settings_dicts), count))
+                    full_test_window_df_bg = add_bg_features(**{**{'df':full_test_window_df_bg}, **set_dict})
 
-                print("---------Adding bond graph features {} of {} to TEST SET for fold {}-----------".format(count_2, len(bg_settings_dicts), count))
-                full_test_window_df_bg = add_bg_features(**{**{'df':full_test_window_df_bg}, **set_dict})
+            else: #the test set bond features are created using all the data before the last date contained in the test set itself
+                  #the train set of the next step will run until that same date for the "sliding window logic"
+                  #this means that we can directly use the previous fold test set bond graph features for the current fold train set
 
-        else: #the test set bond features are created using all the data before the last date contained in the test set itself
-              #the train set of the next step will run until that same date for the "sliding window logic"
-              #this means that we can directly use the previous fold test set bond graph features for the current fold train set
+                print("---------Using test df for bond graph features from fold {} to create TRAIN SET for fold {}-----------".format(count-1, count))
+                full_train_window_df_bg = full_test_window_df_bg #add_bg_features(**{**{'df':full_train_window_df_bg}, **set_dict})
+                print("Checking train set shape: {}".format(full_train_window_df_bg.shape))
 
-            print("---------Using test df for bond graph features from fold {} to create TRAIN SET for fold {}-----------".format(count-1, count))
-            full_train_window_df_bg = full_test_window_df_bg #add_bg_features(**{**{'df':full_train_window_df_bg}, **set_dict})
-            print("Checking train set shape: {}".format(full_train_window_df_bg.shape))
+                full_test_window_df_bg = full_test_window_df.copy()
+                for set_dict in bg_settings_dicts:
+                    count_2+=1
+                    print("---------Adding bond graph features {} of {} to TEST SET for fold {}-----------".format(count_2, len(bg_settings_dicts), count))
+                    full_test_window_df_bg = add_bg_features(**{**{'df':full_test_window_df_bg}, **set_dict})
 
-            full_test_window_df_bg = full_test_window_df.copy()
-            for set_dict in bg_settings_dicts:
-                count_2+=1
-                print("---------Adding bond graph features {} of {} to TEST SET for fold {}-----------".format(count_2, len(bg_settings_dicts), count))
-                full_test_window_df_bg = add_bg_features(**{**{'df':full_test_window_df_bg}, **set_dict})
+            print("----------SHAPE SANITY CHECK--------")
+            df_train = full_train_window_df_bg.iloc[train_idx]
+            print("Training dataset shape before preprocessing pipeline: {}".format(df_train.shape))
+            df_test = full_test_window_df_bg.iloc[test_idx] 
+            print("Test dataset shape before preprocessing pipeline: {}".format(df_test.shape))
 
-        print("----------SHAPE SANITY CHECK--------")
-        df_train = full_train_window_df_bg.iloc[train_idx]
-        print("Training dataset shape before preprocessing pipeline: {}".format(df_train.shape))
-        df_test = full_test_window_df_bg.iloc[test_idx] 
-        print("Test dataset shape before preprocessing pipeline: {}".format(df_test.shape))
+            y_train_fold, X_train_fold, y_test_fold, X_test_fold, feature_labels = transform_train_test(df_train, df_test, preproc_pipeline, target_feature)
 
-        y_train_fold, X_train_fold, y_test_fold, X_test_fold, feature_labels = transform_train_test(df_train, df_test, preproc_pipeline, target_feature)
+            #sanity check on feature columns consistency among folds
+            if count==0:
+                feature_labels_check = set(feature_labels)
+            else:
+                feature_labels_current_check = set(feature_labels)
+                if feature_labels_check != feature_labels_current_check:
+                    if len(feature_labels_current_check)<len(feature_labels_check):
+                        missing = set(feature_labels_check).difference(feature_labels_current_check)
+                    else:
+                        missing = set(feature_labels_current_check).difference(feature_labels_check)
 
-        #sanity check on feature columns consistency among folds
-        if count==0:
-            feature_labels_check = set(feature_labels)
-        else:
-            feature_labels_current_check = set(feature_labels)
-            if feature_labels_check != feature_labels_current_check:
-                if len(feature_labels_current_check)<len(feature_labels_check):
-                    missing = set(feature_labels_check).difference(feature_labels_current_check)
-                else:
-                    missing = set(feature_labels_current_check).difference(feature_labels_check)
+                    print("WARNING! {} column seems to be missing!".format(missing))
+                feature_labels_check = feature_labels_current_check
 
-                print("WARNING! {} column seems to be missing!".format(missing))
-            feature_labels_check = feature_labels_current_check
+            #saving folds indexes
+            folds_idx.append((train_idx, test_idx))
 
-        #saving folds indexes
-        folds_idx.append((train_idx, test_idx))
+            if count==0:
+                print("Creating first fold with X_train of shape {}, y_train of shape {}, X_test of shape {} and y_test of shape {}...".format(X_train_fold.shape, y_train_fold.shape, 
+                                                                                                                                               X_test_fold.shape, y_test_fold.shape))
+                X_valid_train = X_train_fold
+                y_valid_train = y_train_fold
+                X_valid_test = X_test_fold
+                y_valid_test = y_test_fold
+                print()
 
-        if count==0:
-            print("Creating first fold with X_train of shape {}, y_train of shape {}, X_test of shape {} and y_test of shape {}...".format(X_train_fold.shape, y_train_fold.shape, 
-                                                                                                                                           X_test_fold.shape, y_test_fold.shape))
-            X_valid_train = X_train_fold
-            y_valid_train = y_train_fold
-            X_valid_test = X_test_fold
-            y_valid_test = y_test_fold
+            else:
+                print("Creating fold {} with X_train of shape {}, y_train of shape {}, X_test of shape {} and y_test of shape {}...".format(count, X_train_fold.shape, y_train_fold.shape, 
+                                                                                                                                               X_test_fold.shape, y_test_fold.shape))
+                X_valid_train = np.concatenate([X_valid_train, X_train_fold], axis=0)
+                y_valid_train = np.concatenate([y_valid_train, y_train_fold], axis=0)
+                X_valid_test = np.concatenate([X_valid_test, X_test_fold], axis=0)
+                y_valid_test = np.concatenate([y_valid_test, y_test_fold], axis=0)
+                print()
+
+        if save_to_file:
+            print("---------Saving sequential validation train and test-----------")
+            outputfolder = outputpath+experimentname+'/'
+            prefix_2 = '_val_'+str(train_window)+'_'+str(test_window)+'_'
+
+            #Create target folder if it doesn't exist
+            if not os.path.exists(outputfolder):
+                os.mkdir(outputfolder)
+
+            save_preproc_files(outputfolder, prefix1+prefix+prefix_2, preproc_pipeline, 
+                               y_valid_train, X_valid_train, y_valid_test, X_valid_test, 
+                               feature_labels, folds_idx)
             print()
 
-        else:
-            print("Creating fold {} with X_train of shape {}, y_train of shape {}, X_test of shape {} and y_test of shape {}...".format(count, X_train_fold.shape, y_train_fold.shape, 
-                                                                                                                                           X_test_fold.shape, y_test_fold.shape))
-            X_valid_train = np.concatenate([X_valid_train, X_train_fold], axis=0)
-            y_valid_train = np.concatenate([y_valid_train, y_train_fold], axis=0)
-            X_valid_test = np.concatenate([X_valid_test, X_test_fold], axis=0)
-            y_valid_test = np.concatenate([y_valid_test, y_test_fold], axis=0)
-            print()
-
-    if save_to_file:
-        print("---------Saving sequential validation train and test-----------")
-        outputfolder = outputpath+experimentname+'/'
-        prefix_2 = '_val_'+str(train_window)+'_'+str(test_window)+'_'
-
-        #Create target folder if it doesn't exist
-        if not os.path.exists(outputfolder):
-            os.mkdir(outputfolder)
-
-        save_preproc_files(outputfolder, prefix1+prefix+prefix_2, preproc_pipeline, 
-                           y_valid_train, X_valid_train, y_valid_test, X_valid_test, 
-                           feature_labels, folds_idx)
-        print()
-
-    if not validation_prep_only:
-        return y_train, X_train, y_test, X_test, feature_labels, y_valid_train, X_valid_train, y_valid_test, X_valid_test, folds_idx  
-    else:
+    if validation_prep_only:
         return feature_labels, y_valid_train, X_valid_train, y_valid_test, X_valid_test, folds_idx  
+       
+    elif train_test_prep_only:
+        return y_train, X_train, y_test, X_test, feature_labels
+
+    else:
+        return y_train, X_train, y_test, X_test, feature_labels, y_valid_train, X_valid_train, y_valid_test, X_valid_test, folds_idx  
 
 
