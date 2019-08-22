@@ -12,7 +12,7 @@ from tensorflow.keras.optimizers import RMSprop, Adam, SGD
 
 from scripts_ml.models_utils import *
 
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.metrics import make_scorer, accuracy_score
 
 from scripts_ml.ann_utils import *
@@ -24,8 +24,8 @@ prefix_time_seq = 'time_2018-04-30_imp_bg_'
 valid_code = '_val_24000_6000_'
 trainfile = '_traindata'
 testfile = '_testdata'
-postfix_time_seq_val = '_190815_645'
-postfix_time_seq = '_190812_1547'
+postfix_time_seq_val = '_190821_1711'
+postfix_time_seq = '_190821_1659'
 preproc_folder = "enriched_time_seq"
 datafolder = "../data/preproc_traintest/"+preproc_folder+'/'
 indexfile = '_fold_indexes'
@@ -75,7 +75,7 @@ val_y_all = np.concatenate(val_y_all, axis=0)
 
 #tuning
 print("Setting the grid...")
-mlp = KerasClassifier(build_fn=create_mlp_model)
+mlp = KerasClassifier(build_fn=create_mlp_model_GS)
 
 input_shape = [X_train.shape[1]]
 
@@ -92,7 +92,7 @@ dropout = [[0.3]*2, [0.4]*2, [0.5]*2, [0.6]*2, None]
 
 optimizer = [RMSprop(), Adam(), SGD()]
 
-batch_size = [128, 256, 512, 1024, 2048]
+batch_size = [128, 256, 512, 1024]
 
 epochs = [50, 100, 200, 500]
 
@@ -104,20 +104,55 @@ param_grid = {'hidden_layers_no': hidden_layers_no,
                'optimizer': optimizer,
                'batch_size': batch_size,
               'epochs':epochs,
-              'print_summary': [False],
-              'metrics': [['accuracy']],
-              'reset_backend':[True]
                }
 
 
 scoring = {"AUC": "roc_auc", "Accuracy": make_scorer(accuracy_score)}
 
-mlp_grid = GridSearchCV(estimator = mlp, param_grid = param_grid, 
-                               cv = rolling_window_idxs(indexes_tuples), 
-                               verbose=0, n_jobs =7, scoring=scoring, refit='AUC')
+random_grid_search = True
+n_iter = 2
+GPU = False
+verbose=2
+
+if GPU:
+    with tf.device("/device:GPU:0"):
+
+        if not random_grid_search:
+            searchname = 'grid'
+            mlp_grid = GridSearchCV(estimator = mlp, param_grid = param_grid, 
+                                            cv = rolling_window_idxs(indexes_tuples), 
+                                            verbose=verbose, n_jobs =7, scoring=scoring, refit='AUC')
+
+        else:
+            searchname = 'randomgrid'
+            mlp_grid = RandomizedSearchCV(estimator = mlp, param_distributions = param_grid, random_state=42,
+                                          n_iter = n_iter,
+                                            cv = rolling_window_idxs(indexes_tuples), 
+                                            verbose=verbose, n_jobs =7, scoring=scoring, refit='AUC')
+else:
+    if not random_grid_search:
+            searchname = 'grid'
+            mlp_grid = GridSearchCV(estimator = mlp, param_grid = param_grid, 
+                                            cv = rolling_window_idxs(indexes_tuples), 
+                                            verbose=verbose, n_jobs =7, scoring=scoring, refit='AUC')
+
+    else:
+        searchname = 'randomgrid'
+        mlp_grid = RandomizedSearchCV(estimator = mlp, param_distributions = param_grid, random_state=42,
+                                        n_iter = n_iter,
+                                        cv = rolling_window_idxs(indexes_tuples), 
+                                        verbose=verbose, n_jobs =7, scoring=scoring, refit='AUC')
 
 # Fit the grid search model
 print("Fitting the grid...")
 mlp_grid.fit(val_X_all, val_y_all)
 
-print(mlp_grid.best_params_)
+best_dict = mlp_grid.best_params_
+
+print("-------------------------{} SEARCH DONE!------------------")
+
+text_file = open(searchname+"_output.txt", "w")
+for key in best_dict.keys():
+    print(str(key)+" : "+best_dict[key])
+    text_file.write(str(key)+" : "+best_dict[key])
+text_file.close()

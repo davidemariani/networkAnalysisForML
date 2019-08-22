@@ -174,7 +174,6 @@ def mlf_sk_tracking(experiment_name, prefix, postfix, modeltype, trainfile, test
 
         mlflow.log_param("roc_val_fpr", list_to_string(model_kfold['fpr']))
         mlflow.log_param("roc_val_tpr", list_to_string(model_kfold['tpr']))
-        mlflow.log_param("val_predictions", list_to_string(model_kfold['predictions']))
                     
         mlflow.log_metric("val_auc", auc_kf_general)
 

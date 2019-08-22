@@ -67,11 +67,70 @@ def create_mlp_model(input_shape = 16,
                      kernel_initializer = tf.keras.initializers.lecun_uniform(seed=42),
                      bias_initializer = tf.keras.initializers.Zeros(),
                      dropout = None,
-                    print_summary=True,
-                    reset_backend=False):
+                    print_summary=True):
     
     """
     This function creates a multilayer percpetron using keras API.
+    It requires to specify: input shape (int), number of hidden layers (int), number of hidden nodes in each of the hidden layers (list of int),
+    activation function for each hidden layer (list of activation functions), random seed, output function (activation function), 
+    optimizer (training optimizer function), loss function, metrics to monitor, regularizer, option to print the summary of architecture
+    """
+    
+    input_layer = [tf.keras.layers.Dense(hidden_nodes[0], input_shape=[input_shape], activation=hl_activations[0], 
+                                        kernel_initializer=kernel_initializer, bias_initializer=bias_initializer)] 
+
+    if dropout:
+        input_layer.append(tf.keras.layers.Dropout(dropout[0]))
+
+    
+    hidden_layers = []
+    
+    for i in range(1,hidden_layers_no): #operations on hidden layers (dropout or other regularization addition)
+            if len(kernel_regularizers)==0:
+                hidden_layers.append(tf.keras.layers.Dense(hidden_nodes[i], kernel_initializer=kernel_initializer,
+                                                           activation=hl_activations[i]))
+                if dropout!=None:
+                    hidden_layers.append(tf.keras.layers.Dropout(dropout[i]))
+            else:
+                hidden_layers.append(tf.keras.layers.Dense(hidden_nodes[i], kernel_initializer=kernel_initializer,
+                                                           activation=hl_activations[i],
+                                                           kernel_regularizer=kernel_regularizers[i]))
+                if dropout!=None:
+                    hidden_layers.append(tf.keras.layers.Dropout(dropout[i]))
+    
+    output_layer = [tf.keras.layers.Dense(1, activation=output_function, kernel_initializer=kernel_initializer)]
+    
+    model = tf.keras.Sequential(input_layer + hidden_layers + output_layer)
+    
+    if print_summary:
+        print(model.summary())
+    
+    model.compile(optimizer=optimizer, #tf.keras.optimizers.RMSprop(learning_rate=1e-3),      #'adam', 
+              loss=loss_func,
+              metrics=metrics)
+    
+    return model
+
+
+
+def create_mlp_model_GS(input_shape = 16,
+                     hidden_layers_no=1, 
+                     hidden_nodes=[5], 
+                     hl_activations = [tf.nn.relu], 
+                     random_seed=42, 
+                     output_function = tf.nn.sigmoid,
+                     optimizer = tf.keras.optimizers.RMSprop(learning_rate=1e-4),
+                     loss_func = 'binary_crossentropy',
+                     metrics = ['accuracy'],
+                     kernel_regularizers = [],
+                     kernel_initializer = tf.keras.initializers.lecun_uniform(seed=42),
+                     bias_initializer = tf.keras.initializers.Zeros(),
+                     dropout = None,
+                    print_summary=False,
+                    reset_backend=True):
+    
+    """
+    This function creates a multilayer percpetron using keras API as the create_mlp_one but it contains settings for performing hyperparameters grid search.
     It requires to specify: input shape (int), number of hidden layers (int), number of hidden nodes in each of the hidden layers (list of int),
     activation function for each hidden layer (list of activation functions), random seed, output function (activation function), 
     optimizer (training optimizer function), loss function, metrics to monitor, regularizer, option to print the summary of architecture
