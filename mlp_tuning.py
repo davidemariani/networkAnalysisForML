@@ -113,6 +113,10 @@ random_grid_search = True
 n_iter = 2
 GPU = False
 verbose=2
+njobs=7
+
+
+
 
 if GPU:
     with tf.device("/device:GPU:0"):
@@ -153,6 +157,6 @@ print("-------------------------{} SEARCH DONE!------------------")
 
 text_file = open(searchname+"_output.txt", "w")
 for key in best_dict.keys():
-    print(str(key)+" : "+str((best_dict[key]))
+    print(str(key)+" : "+str((best_dict[key])))
     text_file.write(str(key)+" : "+str(best_dict[key]))
 text_file.close()
