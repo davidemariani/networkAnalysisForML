@@ -113,7 +113,7 @@ def create_mlp_model(input_shape = 16,
 
 
 
-def create_mlp_model_GS(input_shape = 16,
+def create_mlp_model_GS(input_shape = 35,
                      hidden_layers_no=1, 
                      hidden_nodes=[5], 
                      hl_activations = [tf.nn.relu], 
