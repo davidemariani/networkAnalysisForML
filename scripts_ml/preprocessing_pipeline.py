@@ -361,6 +361,8 @@ def preproc_pipeline_timeseq(df, feat_str, feat_quant, feat_exp, feat_date, targ
                              bg_settings_dicts, testdate=datetime.datetime(2018, 4, 30), train_window=12000, test_window=3000, #indexWise = False,
                              use_previous_whole_bg = True,
                              whole_network_with_bg_file_path = "../data/04_instrumentsdf_bondgraph.pkl",
+                             export_whole_network = False,
+                             whole_network_output_path = "../data/04_instrumentsdf_bondgraph2.pkl",
                              save_to_file=False, outputpath="../data/", prefix='', decompose_currency=False,
                              validation_prep_only=False, train_test_prep_only=False):
     """
@@ -375,6 +377,10 @@ def preproc_pipeline_timeseq(df, feat_str, feat_quant, feat_exp, feat_date, targ
     """
     if validation_prep_only and train_test_prep_only:
         print("BOTH validation_prep_only AND test_prep_only ARE SET TO TRUE - the process is interrupted...")
+        return
+
+    if export_whole_network and validation_prep_only:
+        print("BOTH validation_prep_only and export_whole_network ARE SET TO TRUE - the process is interrupted. Please set validation_prep_only to False")
         return
 
     df = df.copy()
@@ -421,6 +427,10 @@ def preproc_pipeline_timeseq(df, feat_str, feat_quant, feat_exp, feat_date, targ
             print("Decomposing currency column from full dataset to multiple columns with boolean values...")
             for c in full_df.currency.unique():
                 full_df['currency_'+str(c)] = full_df['currency']==c
+
+        if export_whole_network:
+            print("Exporting the whole network with bond graph features to {}".format(whole_network_output_path))
+            full_df.to_pickle(whole_network_output_path)
 
         test_all = time_train_test(full_df, testset_control_feature, testdate)[1]
 

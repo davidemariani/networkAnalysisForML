@@ -21,6 +21,7 @@ from scripts_network.network_modelling import *
 
 
 def add_bg_features(df, col_to_calc_effort, effort_col, flow_col, col_to_calc_flow, col_ratio_flow,
+                    col_mult_flow,
                     node_flow_col, energy_col, c_node_eff_col,
                     d_node_flow_col, shock_col, red_coeff,
                     seller_col='customer_name_1', buyer_col='debtor_name_1'):
@@ -67,7 +68,11 @@ def add_bg_features(df, col_to_calc_effort, effort_col, flow_col, col_to_calc_fl
         edge_flow = df.groupby([seller_col, buyer_col]).apply(lambda x:np.nansum(x[col_to_calc_flow])/np.nansum(x[col_ratio_flow]))
         df[flow_col] = [edge_flow[(df.loc[i, seller_col], df.loc[i, buyer_col])] for i in df.index]
     else: #this is for delays
-        edge_flow = df[col_to_calc_flow]
+        if col_mult_flow!=None:
+            edge_flow = df[col_to_calc_flow]
+        else:
+            edge_flow = df.groupby([seller_col, buyer_col]).apply(lambda x:np.nansum(x[col_to_calc_flow])*np.nansum(x[col_mult_flow]))
+            edge_flow = [edge_flow[(df.loc[i, seller_col], df.loc[i, buyer_col])] for i in df.index]
         df[flow_col] = edge_flow
 
     df[effort_col] = [edge_effort[(df.loc[i, seller_col], df.loc[i, buyer_col])] for i in df.index]
