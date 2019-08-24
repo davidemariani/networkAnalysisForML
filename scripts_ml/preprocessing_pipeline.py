@@ -374,6 +374,8 @@ def preproc_pipeline_timeseq(df, feat_str, feat_quant, feat_exp, feat_date, targ
     bg_settings_dicts is a list of dictionary containing the settings for the add_bg_features function which generates the bond graph features.
     It still uses the full bond graph dataset for extracting the test set for final stage.
     Setting validation_prep_only to True only the validation folds are created.
+    Setting train_test_prep_only will create only the macro split between training set and test set.
+    Setting export_whole_network to True will export the whole dataset with bond graph features added.
     """
     if validation_prep_only and train_test_prep_only:
         print("BOTH validation_prep_only AND test_prep_only ARE SET TO TRUE - the process is interrupted...")
