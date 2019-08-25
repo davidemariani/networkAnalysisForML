@@ -895,3 +895,23 @@ def feature_importance(viz, model_filter, normalize=True, colors=[TTQcolor['azur
     return p
 
 
+def cor_scatterplot(predictions_1, predictions_2, p_height=600, p_width=600,
+                    circle_size=3, xaxis_label='', yaxis_label='', fill_color=TTQcolor['azureBlue'], alpha=0.6,
+                    title_size='10pt'):
+    """
+    This function plots the scatterplot between two sets of predictions
+    """
+
+    cc = pd.DataFrame({'pr_1':predictions_1, 'pr_2':predictions_2})
+    correlation = round(cc['pr_1'].corr(cc['pr_2']),2)
+
+    p = figure(plot_width=p_width, plot_height=p_height, x_range=Range1d(0.0, 1.0),
+               y_range=Range1d(0.0,1.0), title="CORRELATION: {}".format(correlation))
+
+    p.xaxis.axis_label = xaxis_label
+    p.yaxis.axis_label = yaxis_label
+    p.title.text_font_size = title_size
+
+    p.circle(predictions_1, predictions_2, size=circle_size, fill_color=fill_color, alpha=alpha, line_color='white')
+
+    return p

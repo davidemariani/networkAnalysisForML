@@ -51,12 +51,19 @@ def performance_grid(viz,
                      single_spider=True, 
                      spider_in_row=1, 
                      spiders_params = ['tp_rate', 'tn_rate', 'fp_rate', 'fn_rate', 'test_auc', 'val_auc'],
+                     spiders_params_to_norm = [],
                      spider_p_width=300, 
                      spider_p_height=300, 
                      spider_text_size='12pt', 
                      spider_line_width=4.5, 
                      spider_fill_alpha=0.1,
-                     spider_margin_distance=0.25, ):
+                     spider_margin_distance=0.25,
+                    add_corr_scatter=True,
+                    scatter_height=600,
+                    scatter_width=600,
+                    scatter_title_size='12pt',
+                    scatter_circle_size=5
+                    ):
     """
     This function create a gridplot containing several charts for model performance evaluation:
     - ROC curves comparison for testing and validation phases
@@ -155,6 +162,18 @@ def performance_grid(viz,
 
         folds = gridplot(cols)
 
+    #correlation scatterplot
+    if add_corr_scatter:
+        if len(spider_folds_models)==2:
+            vals_1 = [v for v in viz.loc['test_predictions', spider_folds_models[0]].split(',')[:-1]]
+            vals_1 = [float(i) for i in vals_1]
+            vals_2 = [v for v in viz.loc['test_predictions', spider_folds_models[1]].split(',')[:-1]]
+            vals_2 = [float(i) for i in vals_2]
+            scatter = cor_scatterplot(vals_1, vals_2, xaxis_label=spider_folds_models[0], p_height=scatter_height, p_width=scatter_width,
+                    yaxis_label=spider_folds_models[1], circle_size=scatter_circle_size, title_size=scatter_title_size)
+        #else:
+        #implement the other case!
+
     #Spreadsheet info viz
     if len(spreadsheet_settings)>1:
         ss = []
@@ -171,7 +190,7 @@ def performance_grid(viz,
 
         if normalize_spider:
             if len(spreadsheet_models)==1:
-                for param in spiders_params:
+                for param in spiders_params_to_norm:
                     values = viz_.loc[param, spider_folds_models].values.astype(float)
                     if len(set(values))>1:
                         viz_.loc[param, spider_folds_models] = values/(max(values)) # (values-min(values))/(max(values)-min(values))
@@ -239,13 +258,14 @@ def performance_grid(viz,
             fi = feature_importance(viz, spreadsheet_models, normalize = normalize_importance, colors=colors, xgroup_text_font_size=fimp_text_group_size)
 
             l = gridplot([ss,
-                  [row(val_roc, test_roc)],
-                  [folds],[fi]])
+                  [row(val_roc, folds)],
+                  [row(test_roc, scatter)],
+                  [fi]])
 
         else:
             l = gridplot([ss,
-                  [row(val_roc, test_roc)],
-                  [folds]])
+                  [row(val_roc, folds)],
+                  [row(test_roc, scatter)]])
 
 
     return l
