@@ -121,7 +121,7 @@ scoring = {"AUC": "roc_auc", "Accuracy": make_scorer(accuracy_score)}
 
 random_grid_search = True
 n_iter = 100
-GPU = False
+GPU = True
 GPU_device_name = "/device:GPU:0"
 verbose=2
 njobs=4
