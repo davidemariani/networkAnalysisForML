@@ -664,7 +664,7 @@ def modelSpreadsheet(viz_dict, metric_list, model_type, color_cells=False, color
 
     source = ColumnDataSource(data=dict())
     rf_filter  = viz_dict.loc['model_type'].isin(model_type)
-    source.data = {**{'model' : viz_dict.columns[rf_filter], 'colors':colors}, **dict(zip(metric_list, [viz_dict.loc[m][rf_filter] for m in metric_list]))}
+    source.data = {**{'model' : viz_dict.columns[rf_filter].sort_values(), 'colors':colors}, **dict(zip(metric_list, [viz_dict.loc[m][rf_filter] for m in metric_list]))}
 
     if color_cells:
         template="""
@@ -759,7 +759,7 @@ def plot_rocs(metrics, label=None,
     for idx, metric in enumerate(metrics):
         #roc curves
         p.line(metric["fpr"], metric["tpr"], line_color = col[idx], line_width = line_width, 
-               legend = label[idx]+model_appendix[idx]+' - AUC: '+str(round(metric['auc'],2)))
+               legend = label[idx]+model_appendix[idx]+' - AUC: '+str(round(metric['auc'],3)))
         fpr80.append(np.interp([select_point], metric["tpr"], metric["fpr"])[0])
 
     #labels

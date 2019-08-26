@@ -35,6 +35,7 @@ def performance_grid(viz,
                      rocs_p_width=600, 
                      rocs_p_height=600,
                      rocs_line_width=2, 
+                     rocs_model_appendix = None,
                      normalize_spider=False,
                      single_row_folds=True, 
                      folds_p_width=1200, 
@@ -106,12 +107,13 @@ def performance_grid(viz,
 
 
     #ROC curves
-    val_roc = plot_rocs(roc_val_data, title_lab = 'Validation performance', 
+
+    val_roc = plot_rocs(roc_val_data, title_lab = 'Validation performance', model_appendix = rocs_model_appendix,
                p_width=rocs_p_width, p_height=rocs_p_height, line_width=rocs_line_width,
                     colors = colors, legend_font_size=legend_font_size, fpr_font_size=fpr_font_size,
                    bestFprOnly=bestFprOnly, show_legend=True)
 
-    test_roc = plot_rocs(roc_test_data, title_lab = 'Test performance', 
+    test_roc = plot_rocs(roc_test_data, title_lab = 'Test performance', model_appendix = rocs_model_appendix,
                p_width=rocs_p_width, p_height=rocs_p_height, line_width=rocs_line_width,
                     colors = colors, legend_font_size=legend_font_size, fpr_font_size=fpr_font_size,
                    bestFprOnly=bestFprOnly, show_legend=True)
