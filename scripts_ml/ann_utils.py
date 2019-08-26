@@ -144,7 +144,7 @@ def create_mlp_model_GS(input_shape = 35,
     input_layer = [tf.keras.layers.Dense(hidden_nodes[0], input_shape=[input_shape], activation=hl_activations[0], 
                                         kernel_initializer=kernel_initializer, bias_initializer=bias_initializer)] 
 
-    if dropout:
+    if dropout!=None:
         input_layer.append(tf.keras.layers.Dropout(dropout[0]))
 
     
