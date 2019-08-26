@@ -793,13 +793,15 @@ def histfolds(models, metrics, vizdict, plot_h=250, plot_w=250, colors = [TTQcol
     """
 
     data = {'names':models}
+
+
     for metric in metrics:
         fold_metrics = []
         for model in models:
             fold_metrics.append(vizdict.loc[metric, model])
         data[metric] = fold_metrics
 
-    x = [ (mod, met) for mod in models for met in metrics ]
+    x = [ (mod, met) for mod in models for met in metrics] # if not pd.isnull(vizdict.loc[met, model])]
 
     counts = []
     for m in range(len(data[metrics[0]])):

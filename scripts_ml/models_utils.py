@@ -21,6 +21,7 @@ from sklearn.model_selection import cross_val_predict, cross_validate
 from sklearn.metrics import precision_recall_curve, roc_curve, roc_auc_score, confusion_matrix
 from sklearn.linear_model import SGDClassifier
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.base import clone
 
 from scripts_mlflow.mlflow_utils import *
 
@@ -197,7 +198,7 @@ def models_loop_time_leak(models, datafolder, prefixes, postfixes, val_timeseq_e
                        'postfix':postfix}
 
             #selecting model and transformed train and test sets
-            model = models[loop]
+            model = clone(models[loop])
 
             modeltype = str(model).split('(')[0]
             results = {'model':modeltype}
@@ -212,14 +213,14 @@ def models_loop_time_leak(models, datafolder, prefixes, postfixes, val_timeseq_e
             print("--------------Loading VALIDATION preprocessed data...")
             print("training files: {}".format(val_trainfilepath))
             print("testing files: {}".format(val_testfilepath))
-            [X_train, y_train, feature_labels] = pd.read_pickle(val_trainfilepath) 
-            [X_test, y_test, feature_labels] = pd.read_pickle(val_testfilepath) 
+            [val_X_train, val_y_train, feature_labels] = pd.read_pickle(val_trainfilepath) 
+            [val_X_test, val_y_test, feature_labels] = pd.read_pickle(val_testfilepath) 
             indexes = pd.read_pickle(val_indexespath)
 
             #validation performance
             print('- Training/Validation...')
-            model_kfold = model_diag_seq(model, X_train, y_train, 
-                                             specify_idxs=True, idx_tuples=indexes, X_test=X_test, y_test=y_test, scoring=scoring)
+            model_kfold = model_diag_seq(model, val_X_train, val_y_train, 
+                                             specify_idxs=True, idx_tuples=indexes, X_test=val_X_test, y_test=val_y_test, scoring=scoring)
 
             results['validation'] = model_kfold
 
@@ -236,6 +237,8 @@ def models_loop_time_leak(models, datafolder, prefixes, postfixes, val_timeseq_e
             [X_test, y_test, feature_labels] = pd.read_pickle(testfilepath) 
 
             #training the model
+            print("- Training the model..")
+            model = clone(models[loop])
             model.fit(X_train, y_train)
 
             #testing on out of sample observations

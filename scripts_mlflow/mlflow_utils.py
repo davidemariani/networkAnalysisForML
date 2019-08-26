@@ -226,7 +226,7 @@ def mlf_sk_tracking(experiment_name, prefix, postfix, modeltype, trainfile, test
 # EXPERIMENT RETRIEVAL
 #-----------------------------------------
 
-to_transform_to_float = ['eta0', 'n_iter_no_change', 'max_iter', 'alpha', 'learning_rate', 'loss', 'val_auc', 'test_auc', 
+to_transform_to_float = ['eta0', 'n_iter_no_change', 'max_iter', 'alpha', 'val_auc', 'test_auc', 
                          'n_estimators', 'max_depth', 'max_features', 'max_leaf_nodes', 'min_samples_leaf', 'min_samples_split', 
                          'batch_size', 'epochs_actual', 'class_1_weight', 'hidden_layers_no', 
                          'hidden_nodes', 'tr_accuracy']
