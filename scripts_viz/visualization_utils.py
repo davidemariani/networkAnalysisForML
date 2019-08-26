@@ -27,6 +27,7 @@ from numpy import histogram, linspace
 from scipy.stats.kde import gaussian_kde
 from bokeh.layouts import gridplot, column
 from bokeh.io import output_file
+import matplotlib.patches as patches
 
 #sklearn
 from sklearn.model_selection import cross_val_predict
@@ -76,6 +77,38 @@ TTQcolor = {
   }
 
 ##UTILS
+
+def brightness(color):
+    """
+    Auxiliar function for colordemo
+    """
+    b = (int(color[1:3], 16) * 299 +  int(color[3:5], 16) * 587 + int(color[5:7], 16) * 114) / 1000
+    return b
+
+def fontcolor(backgcolor):
+    """
+    Auxiliar function for colordemo
+    """
+    fontcolor = TTQcolor["font"]
+    if brightness(backgcolor) < 123:
+        fontcolor = TTQcolor["lightGrey"]
+    return fontcolor
+
+
+def colordemo():
+    """
+    Preview of the color palette - useful during visualisation tools prototyping
+    """
+    fig, axes = plt.subplots(7, 6, subplot_kw={'xticks': [], 'yticks': []})
+    fig.subplots_adjust(hspace=0.3, wspace=0.05)
+
+    for idx, (key, color) in enumerate(TTQcolor.items()):
+        ax = plt.subplot(7,6, idx+1)
+        ax.add_patch(patches.Rectangle((0,0),1.,1.,linewidth=1,edgecolor=None,facecolor=color))
+        ax.text(.50, .50, "{:}".format(key), horizontalalignment='center', 
+                verticalalignment='center', transform=ax.transAxes, 
+                color=fontcolor(color))
+        ax.set_axis_off()
 
 def convert_to_eur(val, curr):
     """
