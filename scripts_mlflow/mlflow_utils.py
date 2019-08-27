@@ -233,7 +233,8 @@ to_transform_to_float = ['eta0', 'n_iter_no_change', 'max_iter', 'alpha', 'val_a
 
 
 
-def create_exp_df(experiment, to_float_list = to_transform_to_float):
+def create_exp_df(experiment, to_float_list = to_transform_to_float, from_str_dict={'max_features':{'auto':35,
+                                                                                                    'sqrt':6}}):
     """
     This function, given the experiment name, retrieves experiment data from mlflow and include them in a pandas dataframe
     """
@@ -290,6 +291,16 @@ def create_exp_df(experiment, to_float_list = to_transform_to_float):
 
     for field in to_transform_to_float:
         if field in viz.index:
+            tr_vals = []
+            for value in viz.loc[field]:
+                if field in list(from_str_dict.keys()) and value in from_str_dict[field].keys():
+                    tr_vals.append(from_str_dict[field][value])
+                else:
+                    tr_vals.append(value)
+            viz.loc[field] = tr_vals
+            
+        else:
+
             try:
                 viz.loc[field] = viz.loc[field].apply(pd.to_numeric, errors='coerce')
             except:
