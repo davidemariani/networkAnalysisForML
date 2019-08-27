@@ -4,7 +4,6 @@
 # Programme    : Msc Data SCience                                                  #
 # Script Name  : visualization_perfgrid.py                                         #
 # Description  : utils for data visualizations                                     #
-# Version      : 0.2                                                               #
 #==================================================================================#
 # This file contains general purpose visualization functions initially based on    #
 # bokeh v1.2.0                                                                     #
@@ -23,6 +22,32 @@ from bokeh.models import ColumnDataSource, FactorRange
 from bokeh.layouts import gridplot, row, column
 from bokeh.plotting import figure
 
+
+#UTILS
+def color_generator(experiment):
+    """
+    This function generates a list of colors from the TTQ palette.
+    The color depends on the type of experiment, recognised by the words contained in its name
+    """
+
+    color_list = []
+    for e in experiment:
+        if "benchmarks" in e:
+            if "shuffle" in e:
+                color_list.append(TTQcolor['azureBlue'])
+            elif "time_old" in e:
+                color_list.append(TTQcolor['electric'])
+            elif "time_opt" in e:
+                color_list.append(TTQcolor['pea'])
+        elif "enriched" in e:
+            if "shuffle" in e:
+                color_list.append(TTQcolor['yell'])
+            elif "time_seq" in e and "opt" not in e:
+                color_list.append(TTQcolor['richOrange'])
+            elif "time_seq" in e and "opt" in e:
+                color_list.append(TTQcolor['bloodRed'])
+    return color_list
+    
 
 
 #PERFORMANCE VISUALIZATION GRID
