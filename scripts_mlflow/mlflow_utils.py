@@ -46,7 +46,7 @@ def list_to_string(list_):
             return string_
 
 
-def set_clf_cols(viz, abbr_dict={"RandomForestClassifier":"RF", "SGDClassifier":"SGD"}):
+def set_clf_cols(viz, abbr_dict={"RandomForestClassifier":"RF", "SGDClassifier":"SGD", "sequential":"ANN"}):
     """
     This is an auxiliar function for create_exp_df.
     It gets a visualization dataframe as inputs and it returns the same dataframe adapted for gridplot viz.
@@ -54,6 +54,8 @@ def set_clf_cols(viz, abbr_dict={"RandomForestClassifier":"RF", "SGDClassifier":
     
     viz = viz.copy()
     names = viz['model_filename']
+
+    viz['model_type'] = [t if "sequential" not in t else "sequential" for t in list(viz['model_type'])]
     
     mod_names = []
     
@@ -61,7 +63,7 @@ def set_clf_cols(viz, abbr_dict={"RandomForestClassifier":"RF", "SGDClassifier":
     postfix = ''
     for name in names:
         try:
-            postfix = name.split(list(viz['model_type'])[count])[1].replace(postfix+'__', '').replace('.pkl','')
+            postfix = name.split(list(viz['model_type'])[count])[1].replace(postfix+'__', '').replace('.pkl','').replace('.h5', '')
 
             types = [abbr_dict[i] if i in abbr_dict.keys() else i for i in list(viz['model_type'])]
             newname = types[count]+postfix
@@ -226,7 +228,7 @@ def mlf_sk_tracking(experiment_name, prefix, postfix, modeltype, trainfile, test
 # EXPERIMENT RETRIEVAL
 #-----------------------------------------
 
-to_transform_to_float = ['eta0', 'n_iter_no_change', 'max_iter', 'alpha', 'val_auc', 'test_auc', 
+to_transform_to_float = ['eta0', 'n_iter_no_change', 'max_iter', 'alpha', 'val_auc', 'test_auc', 'dropout',
                          'n_estimators', 'max_depth', 'max_features', 'max_leaf_nodes', 'min_samples_leaf', 'min_samples_split', 
                          'batch_size', 'epochs_actual', 'class_1_weight', 'hidden_layers_no', 
                          'hidden_nodes', 'tr_accuracy']
