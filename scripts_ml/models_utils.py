@@ -172,7 +172,7 @@ def models_loop_time_leak(models, datafolder, prefixes, postfixes, val_timeseq_e
     It returns a dictionary containing the results from validation and testing phase, useful to be plugged in the plot_rocs function
     to visualize AUCs.
 
-    It also allow results and hyperparameters tracking in MLflow setting mlf_tracking to True. 
+    It also allows results and hyperparameters tracking in MLflow setting mlf_tracking to True. 
     """
 
     #check that the lists have consistent length

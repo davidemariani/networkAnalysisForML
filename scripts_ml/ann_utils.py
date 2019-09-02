@@ -21,6 +21,7 @@ import time
 
 from sklearn.metrics import roc_curve, roc_auc_score, confusion_matrix
 from scripts_ml.models_utils import *
+from scripts_mlflow.mlflow_utils import *
 
 #importing TensorFlow
 import tensorflow as tf
@@ -943,104 +944,18 @@ def mlp_exp_timeseq(datafolder, prefix_time_seq, postfix_time_seq,
 
     if mlf_tracking: #mlflow tracking
 
-        #checking the name of existing experiments
-        expnames = set([exp.name for exp in mlflow.tracking.MlflowClient().list_experiments()])
-
-        #creating a new experiment if its name is not among the existing ones
-        if experiment_name not in expnames:
-            print("- Creating the new experiment '{}',  the following results will be saved in it...".format(experiment_name))
-            exp_id = mlflow.create_experiment(experiment_name)
-        else: #adding new results to the existing one otherwise
-            print("- Activating existing experiment '{}', the following results will be saved in it...".format(experiment_name))
-            mlflow.set_experiment(experiment_name)
-            exp_id = mlflow.tracking.MlflowClient().get_experiment_by_name(experiment_name).experiment_id
-               
-        with mlflow.start_run(experiment_id=exp_id, run_name=prefix_time_seq + modeltype): #create and initialize experiment
-
-            print("- Tracking the experiment on mlflow...")
-
-            #experiment type tracking
-            mlflow.log_param("experiment_type", prefix_time_seq)
-
-            #source file tracking
-            mlflow.log_param("train_file_path", trainfiles)
-            mlflow.log_param("test_file_path", testfiles)
-            mlflow.log_param("val_train_file_path", val_trainfiles)
-            mlflow.log_param("val_test_file_path", val_testfiles)
-            mlflow.log_param("indexes_file_path", indexes_path)
-            mlflow.log_param("train_size", X_train.shape[0])
-            mlflow.log_param("test_size", X_test.shape[0])
-
-
-            #model info and hyperparameters tracking
-            mlflow.log_param("model_type", modeltype)
-
-            if save_model:
-                mlflow.log_param("model_filename", filename)
-                mlflow.log_param("model_filepath", filepath)
-            else:
-                mlflow.log_param("model_filename", None)
-                mlflow.log_param("model_filepath", None)
-
-            #mlp hyperparameters:
-            mlflow.log_param("hidden_layers_no", hidden_layers_no)
-            mlflow.log_param("hidden_nodes", str(hidden_nodes))
-            mlflow.log_param("hl_out_activations", str([l['config']['activation'] for l in mlp.get_config()['layers'] if l['class_name']=='Dense']))
-            mlflow.log_param("optimizer", str(optimizer).split('tensorflow.python.keras.optimizer_v2.')[1].split(' ')[0])
-            mlflow.log_param("optimizer_settings", str(optimizer.get_config()))
-            mlflow.log_param("batch_size", batch_size)
-            mlflow.log_param("loss_func", str(mlp.loss).split('<tensorflow.python.keras.losses.')[1].split(' ')[0])
-            mlflow.log_param("epochs_settings", epochs)
-            mlflow.log_param("kernel_init", str(kernel_initializer.get_config()))
-            mlflow.log_param("kernel_regularizers", str(kernel_regularizers))
-            mlflow.log_param("bias_init", str([l['config']['bias_initializer']['class_name'] for l in mlp.get_config()['layers'] if l['class_name']=='Dense']))
-            mlflow.log_param("dropout", dropout)
-            mlflow.log_param("early_stopping", early_stopping)
-            if early_stopping:
-                mlflow.log_param("early_stopping_metric", str(to_monitor))
-            mlflow.log_param("class_1_weight", class_1_weight)
-            mlflow.log_param("tr_val_shuffle", shuffle)
-            mlflow.log_param("batch_and_steps", use_batch_and_steps)
-            mlflow.log_param("pred_threshold", pred_threshold)
-            mlflow.log_param("tr_time_str", time_message)
-
-            mlflow.log_param("roc_val_fpr", list_to_string(history_dict["roc_val_fpr"]))
-            mlflow.log_param("roc_val_tpr", list_to_string(history_dict["roc_val_tpr"]))
-
-            mlflow.log_param("roc_test_fpr", list_to_string(history_dict["test_results"]["fpr"]))
-            mlflow.log_param("roc_test_tpr", list_to_string(history_dict["test_results"]["tpr"]))
-          
-            #mlp metrics
-            mlflow.log_metric("epochs_actual", len(history_dict['test_training']['loss']))
-            mlflow.log_metric("tr_time", training_time)
-
-            for metric in mlp.metrics_names:
-                mlflow.log_metric("tr_"+metric, history_dict['test_training'][metric][-1])
-
-            for fold in history_dict['validation_folds'].keys():
-                fold_auc = history_dict['validation_folds'][fold]['results']['auc']
-                mlflow.log_metric("val_auc_"+fold, fold_auc)
-
-
-            mlflow.log_metric("val_auc", history_dict['val_auc'])
-            mlflow.log_metric("test_auc", history_dict['test_results']['auc'])
-            mlflow.log_metric("test_tp", history_dict["test_confusion_matrix"]["tp"])
-            mlflow.log_metric("test_tn", history_dict["test_confusion_matrix"]["tn"])
-            mlflow.log_metric("test_fp", history_dict["test_confusion_matrix"]["fp"])
-            mlflow.log_metric("test_fn", history_dict["test_confusion_matrix"]["fn"])
-            mlflow.log_metric("test_tpr", history_dict["test_confusion_matrix"]["tpr"])
-            mlflow.log_metric("test_tnr", history_dict["test_confusion_matrix"]["tnr"])
-            mlflow.log_metric("test_fpr", history_dict["test_confusion_matrix"]["fpr"])
-            mlflow.log_metric("test_fnr", history_dict["test_confusion_matrix"]["fnr"])
-
-            #storing the model file as pickle
-            mlflow.keras.log_model(mlp, "model")
-
-            #storing pipeline-processed trainset and testset
-            mlflow.log_artifact(trainfiles, "train_file")
-            mlflow.log_artifact(testfiles, "test_file")
-
-            print("- Experiment tracked.")
+        mlf_mlp_tracking(experiment_name=experiment_name, prefix_time_seq=prefix_time_seq, 
+                         modeltype=modeltype, trainfiles=trainfiles, testfiles=testfiles, 
+                     val_trainfiles=val_trainfiles, val_testfiles=val_testfiles, indexes_path=indexes_path,
+                     datafolder=datafolder, train_size=X_train.shape[0], test_size=X_test.shape[0], mlp=mlp, 
+                     hidden_layers_no=hidden_layers_no, hidden_nodes=hidden_nodes,
+                     optimizer=optimizer, batch_size=batch_size, epochs=epochs, kernel_initializer=kernel_initializer, 
+                     kernel_regularizers=kernel_regularizers,
+                     dropout=dropout, early_stopping=early_stopping, to_monitor=to_monitor, class_1_weight=class_1_weight, 
+                     shuffle=shuffle,
+                     use_batch_and_steps=use_batch_and_steps, pred_threshold=pred_threshold, time_message=time_message,
+                     training_time=training_time,
+                     history_dict=history_dict, save_model=save_model, filename=filename, filepath=filepath)
 
     return history_dict, preds
 
