@@ -66,6 +66,7 @@ def create_mlp_model(input_shape = 16,
                      kernel_regularizers = [],
                      kernel_initializer = tf.keras.initializers.lecun_uniform(seed=42),
                      bias_initializer = tf.keras.initializers.Zeros(),
+                     batch_norm_layers = [],
                      dropout = None,
                     print_summary=True):
     
@@ -82,6 +83,9 @@ def create_mlp_model(input_shape = 16,
     if dropout:
         input_layer.append(tf.keras.layers.Dropout(dropout[0]))
 
+    if 0 in batch_norm_layers:
+        input_layer.append(tf.keras.layers.BatchNormalization())
+
     
     hidden_layers = []
     
@@ -91,12 +95,18 @@ def create_mlp_model(input_shape = 16,
                                                            activation=hl_activations[i]))
                 if dropout!=None:
                     hidden_layers.append(tf.keras.layers.Dropout(dropout[i]))
+
+                if i in batch_norm_layers:
+                    hidden_layers.append(tf.keras.layers.BatchNormalization())
             else:
                 hidden_layers.append(tf.keras.layers.Dense(hidden_nodes[i], kernel_initializer=kernel_initializer,
                                                            activation=hl_activations[i],
                                                            kernel_regularizer=kernel_regularizers[i]))
                 if dropout!=None:
                     hidden_layers.append(tf.keras.layers.Dropout(dropout[i]))
+
+                if i in batch_norm_layers:
+                    hidden_layers.append(tf.keras.layers.BatchNormalization())
     
     output_layer = [tf.keras.layers.Dense(1, activation=output_function, kernel_initializer=kernel_initializer)]
     
@@ -420,6 +430,7 @@ def mlp_exp(datafolder, prefix, postfix,
                to_monitor=('accuracy', 0.9),
                early_stopping=False,
                batch_size=512,
+               batch_norm_layers = [],
                epochs=5,
                class_1_weight=50,
                validation_ep = True,
@@ -494,6 +505,7 @@ def mlp_exp(datafolder, prefix, postfix,
                       kernel_regularizers = kernel_regularizers,
                       kernel_initializer = kernel_initializer,
                       bias_initializer = bias_initializer,
+                      batch_norm_layers = batch_norm_layers,
                        dropout = dropout,
                       metrics = metrics)
 
@@ -543,6 +555,7 @@ def mlp_exp(datafolder, prefix, postfix,
                           kernel_regularizers = kernel_regularizers,
                           kernel_initializer = kernel_initializer,
                           bias_initializer = bias_initializer,
+                          batch_norm_layers = batch_norm_layers,
                            dropout = dropout,
                           metrics = metrics)
 
@@ -704,6 +717,7 @@ def mlp_exp_timeseq(datafolder, prefix_time_seq, postfix_time_seq,
                to_monitor=('accuracy', 0.9),
                early_stopping=False,
                batch_size=512,
+               batch_norm_layers = [],
                epochs=5,
                verbose=1,
                class_1_weight=50,
@@ -784,6 +798,7 @@ def mlp_exp_timeseq(datafolder, prefix_time_seq, postfix_time_seq,
                        hl_activations=hl_activations,                                        
                        optimizer = optimizer,
                        loss_func=loss_func,
+                       batch_norm_layers = batch_norm_layers,
                       kernel_regularizers = kernel_regularizers,
                       kernel_initializer = kernel_initializer,
                       bias_initializer = bias_initializer,
@@ -807,6 +822,7 @@ def mlp_exp_timeseq(datafolder, prefix_time_seq, postfix_time_seq,
                        hl_activations=hl_activations,                                        
                        optimizer = optimizer,
                        loss_func=loss_func,
+                       batch_norm_layers = batch_norm_layers,
                       kernel_regularizers = kernel_regularizers,
                       kernel_initializer = kernel_initializer,
                       bias_initializer = bias_initializer,
@@ -867,6 +883,7 @@ def mlp_exp_timeseq(datafolder, prefix_time_seq, postfix_time_seq,
                         hl_activations=hl_activations,                                        
                         optimizer = optimizer,
                         loss_func=loss_func,
+                        batch_norm_layers = batch_norm_layers,
                         kernel_regularizers = kernel_regularizers,
                         kernel_initializer = kernel_initializer,
                         bias_initializer = bias_initializer,
