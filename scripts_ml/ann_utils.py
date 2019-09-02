@@ -954,7 +954,7 @@ def mlp_exp_timeseq(datafolder, prefix_time_seq, postfix_time_seq,
                      dropout=dropout, early_stopping=early_stopping, to_monitor=to_monitor, class_1_weight=class_1_weight, 
                      shuffle=shuffle,
                      use_batch_and_steps=use_batch_and_steps, pred_threshold=pred_threshold, time_message=time_message,
-                     training_time=training_time,
+                     training_time=training_time, batch_norm_layers=batch_norm_layers,
                      history_dict=history_dict, save_model=save_model, filename=filename, filepath=filepath)
 
     return history_dict, preds

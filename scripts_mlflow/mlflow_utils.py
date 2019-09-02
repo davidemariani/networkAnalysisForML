@@ -231,7 +231,8 @@ def mlf_mlp_tracking(experiment_name, prefix_time_seq, modeltype, trainfiles, te
                      optimizer, batch_size, epochs, kernel_initializer, kernel_regularizers,
                      dropout, early_stopping, to_monitor, class_1_weight, shuffle,
                      use_batch_and_steps, pred_threshold, time_message, training_time,
-                     history_dict, save_model=False, filename=None, filepath=None):
+                     history_dict, batch_norm_layers=[],
+                     save_model=False, filename=None, filepath=None):
     """
     This function is an auxiliar function of models_loop which activates the mlflow tracking of an experiment
     using multi-layer perceptrons using tensorflow and keras.
@@ -356,7 +357,7 @@ def mlf_mlp_tracking(experiment_name, prefix_time_seq, modeltype, trainfiles, te
 
 def mlf_rnn_tracking(experiment_name, prefix, trainfiles, testfiles, val_trainfiles, val_testfiles,
                      indexes_path, train_size, test_size, modeltype, 
-                     recurrent_layers_no, rnn_cells, batch_norm, 
+                     recurrent_layers_no, layers_stack,
                      optimizer, batch_size, epochs, kernel_initializer,
                      kernel_regularizers, dropout, recurrent_dropout,
                      early_stopping, shuffle, 
@@ -402,9 +403,8 @@ def mlf_rnn_tracking(experiment_name, prefix, trainfiles, testfiles, val_trainfi
 
         #mlp hyperparameters:
         mlflow.log_param("recurrent_layers_no", recurrent_layers_no)
-        mlflow.log_param("rnn_cells", rnn_cells)
+        mlflow.log_param("layers_stack", layers_stack)
         mlflow.log_param("cells_units", cells_units)
-        mlflow.log_param("batch_norm", batch_norm)
         mlflow.log_param("hl_out_activations", str([l['config']['activation'] for l in rnn.get_config()['layers'] if l['class_name']=='Dense']))
         mlflow.log_param("optimizer", str(optimizer).split('tensorflow.python.keras.optimizer_v2.')[1].split(' ')[0])
         mlflow.log_param("optimizer_settings", str(optimizer.get_config()))
