@@ -356,12 +356,10 @@ def mlf_mlp_tracking(experiment_name, prefix_time_seq, modeltype, trainfiles, te
 
 
 def mlf_rnn_tracking(experiment_name, prefix, trainfiles, testfiles, val_trainfiles, val_testfiles,
-                     indexes_path, train_size, test_size, modeltype, 
-                     recurrent_layers_no, layers_stack,
+                     indexes_path, train_size, test_size, 
                      optimizer, batch_size, epochs, kernel_initializer,
-                     kernel_regularizers, dropout, recurrent_dropout,
                      early_stopping, shuffle, 
-                     rnn, history,
+                     rnn, history, y_scores,
                      test_fpr, test_tpr, test_auc, history_vals_to_track=[]):
     """
     This function will track a recurrent neural network experiment on mlflow.
@@ -381,6 +379,8 @@ def mlf_rnn_tracking(experiment_name, prefix, trainfiles, testfiles, val_trainfi
         mlflow.set_experiment(experiment_name)
         exp_id = mlflow.tracking.MlflowClient().get_experiment_by_name(experiment_name).experiment_id
 
+
+    modeltype = rnn.get_config()['name']
     with mlflow.start_run(experiment_id=exp_id, run_name=prefix + modeltype): #create and initialize experiment
 
         print("- Tracking the experiment on mlflow...")
@@ -399,38 +399,50 @@ def mlf_rnn_tracking(experiment_name, prefix, trainfiles, testfiles, val_trainfi
 
 
         #model info and hyperparameters tracking
-        mlflow.log_param("model_type", modeltype)
+        mlflow.log_param("modeltype", modeltype)
+
+        cfg = rnn.get_config()
 
         #mlp hyperparameters:
+        recurrent_layers_no = len([i for i in cfg['layers'] if i['class_name'] in ('GRU', 'LSTM', 'Dense')])
         mlflow.log_param("recurrent_layers_no", recurrent_layers_no)
+        layers_stack = str([i['class_name'] for i in cfg['layers']])
         mlflow.log_param("layers_stack", layers_stack)
+        cells_units = str([(i['class_name'], i['config']['units']) for i in cfg['layers'] if 'units' in i['config'].keys()])
         mlflow.log_param("cells_units", cells_units)
-        mlflow.log_param("hl_out_activations", str([l['config']['activation'] for l in rnn.get_config()['layers'] if l['class_name']=='Dense']))
+        mlflow.log_param("hl_out_activations", str([(i['class_name'], i['config']['activation']) for i in cfg['layers'] if 'activation' in i['config'].keys()]))
         mlflow.log_param("optimizer", str(optimizer).split('tensorflow.python.keras.optimizer_v2.')[1].split(' ')[0])
         mlflow.log_param("optimizer_settings", str(optimizer.get_config()))
         mlflow.log_param("batch_size", batch_size)
-        mlflow.log_param("loss_func", str(rnn.loss).split('<tensorflow.python.keras.losses.')[1].split(' ')[0])
+        mlflow.log_param("loss_func", str(rnn.loss))
         mlflow.log_param("epochs_settings", epochs)
         mlflow.log_param("kernel_init", str(kernel_initializer.get_config()))
-        mlflow.log_param("kernel_regularizers", str(kernel_regularizers))
-        mlflow.log_param("dropout", dropout)
-        mlflow.log_param("recurrent_dropout", recurrent_dropout)
+        mlflow.log_param("dropout", str([(i['class_name'], i['config']['dropout']) for i in cfg['layers'] if 'dropout' in i['config'].keys()]))
+        mlflow.log_param("recurrent_dropout", str([(i['class_name'], i['config']['recurrent_dropout']) for i in cfg['layers'] if 'recurrent_dropout' in i['config'].keys()]))
         mlflow.log_param("early_stopping", early_stopping)
         if early_stopping:
             mlflow.log_param("early_stopping_metric", str(to_monitor))
         mlflow.log_param("tr_shuffle", shuffle)
 
+        mlflow.log_param("build_input_shape", str(cfg["build_input_shape"]))
+
         mlflow.log_param("auc_epochs_val", history['val_auc'])
 
         for hv in history_vals_to_track:
-            mlflow.log_param(hv, list_to_string(history_dict[hv]))
+            if 'auc_' in hv:
+                mlflow.log_param('auc', list_to_string(history[hv]))
+            elif 'val_auc_' in hv:
+                mlflow.log_param('val_auc', list_to_string(history[hv]))
+            else:
+                mlflow.log_param(hv, list_to_string(history[hv]))
           
-        mlflow.log_metric("epochs_actual", len(history_dict['loss']))
-
+        mlflow.log_metric("epochs_actual", len(history['loss']))
 
         mlflow.log_metric("test_auc", test_auc)
-        mlflow.log_metric("test_tpr", test_tpr)
-        mlflow.log_metric("test_fpr", test_fpr)
+        mlflow.log_param("test_tpr", list_to_string(test_tpr))
+        mlflow.log_param("test_fpr", list_to_string(test_fpr))
+
+        mlflow.log_param("predictions", list_to_string(y_scores))
 
         #storing the model file as pickle
         mlflow.keras.log_model(rnn, "model")
