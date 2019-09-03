@@ -663,8 +663,12 @@ def modelSpreadsheet(viz_dict, metric_list, model_type, color_cells=False, color
 
 
     source = ColumnDataSource(data=dict())
+
+    viz_dict = viz_dict[sorted(list(viz_dict.columns))] #sorting vizdict
+
     rf_filter  = viz_dict.loc['model_type'].isin(model_type)
-    source.data = {**{'model' : viz_dict.columns[rf_filter].sort_values(), 'colors':colors}, **dict(zip(metric_list, [viz_dict.loc[m][rf_filter] for m in metric_list]))}
+
+    source.data = {**{'model' : viz_dict.columns[rf_filter], 'colors':colors}, **dict(zip(metric_list, [viz_dict.loc[m, viz_dict.columns[rf_filter]] for m in metric_list]))}
 
     if color_cells:
         template="""
