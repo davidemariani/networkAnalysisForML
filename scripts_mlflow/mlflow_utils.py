@@ -426,8 +426,6 @@ def mlf_rnn_tracking(experiment_name, prefix, trainfiles, testfiles, val_trainfi
 
         mlflow.log_param("build_input_shape", str(cfg["build_input_shape"]))
 
-        mlflow.log_param("auc_epochs_val", history['val_auc'])
-
         for hv in history_vals_to_track:
             if 'auc_' in hv:
                 mlflow.log_param('auc', list_to_string(history[hv]))
