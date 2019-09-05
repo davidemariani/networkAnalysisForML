@@ -356,7 +356,7 @@ def mlf_mlp_tracking(experiment_name, prefix_time_seq, modeltype, trainfiles, te
 
 
 def mlf_rnn_tracking(experiment_name, prefix, trainfiles, testfiles, val_trainfiles, val_testfiles,
-                     indexes_path, train_size, test_size, 
+                     indexes_path, train_size, test_size, input_shape,
                      optimizer, batch_size, epochs, kernel_initializer,
                      early_stopping, shuffle, 
                      rnn, history, y_scores,
@@ -424,7 +424,10 @@ def mlf_rnn_tracking(experiment_name, prefix, trainfiles, testfiles, val_trainfi
             mlflow.log_param("early_stopping_metric", str(to_monitor))
         mlflow.log_param("tr_shuffle", shuffle)
 
-        mlflow.log_param("build_input_shape", str(cfg["build_input_shape"]))
+        if "build_input_shape" in cfg.keys():
+            mlflow.log_param("build_input_shape", str(cfg["build_input_shape"]))
+        else:
+            mlflow.log_param("build_input_shape", str(input_shape))
 
         for hv in history_vals_to_track:
             if 'auc_' in hv:
