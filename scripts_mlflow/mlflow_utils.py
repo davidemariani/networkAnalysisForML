@@ -359,8 +359,9 @@ def mlf_rnn_tracking(experiment_name, prefix, trainfiles, testfiles, val_trainfi
                      indexes_path, train_size, test_size, input_shape,
                      optimizer, batch_size, epochs, kernel_initializer,
                      early_stopping, shuffle, 
-                     rnn, history, y_scores,
-                     test_fpr, test_tpr, test_auc, history_vals_to_track=[]):
+                     rnn, history, y_scores, 
+                     test_fpr, test_tpr, test_auc, history_vals_to_track=[],
+                     class_weights=None):
     """
     This function will track a recurrent neural network experiment on mlflow.
     This is a quick way to track the latest progress with RNN but requires further 
@@ -420,6 +421,7 @@ def mlf_rnn_tracking(experiment_name, prefix, trainfiles, testfiles, val_trainfi
         mlflow.log_param("dropout", str([(i['class_name'], i['config']['dropout']) for i in cfg['layers'] if 'dropout' in i['config'].keys()]))
         mlflow.log_param("recurrent_dropout", str([(i['class_name'], i['config']['recurrent_dropout']) for i in cfg['layers'] if 'recurrent_dropout' in i['config'].keys()]))
         mlflow.log_param("early_stopping", early_stopping)
+        mlflow.log_param("class_weights", str(class_weights))
         if early_stopping:
             mlflow.log_param("early_stopping_metric", str(to_monitor))
         mlflow.log_param("tr_shuffle", shuffle)
