@@ -400,7 +400,8 @@ def mlf_rnn_tracking(experiment_name, prefix, trainfiles, testfiles, val_trainfi
 
 
         #model info and hyperparameters tracking
-        mlflow.log_param("modeltype", modeltype)
+        mlflow.log_param("model_type", modeltype)
+        mlflow.log_param("model_filename", experiment_name+'_'+rnn.get_config()['name'])
 
         cfg = rnn.get_config()
 
@@ -468,7 +469,7 @@ to_transform_to_float = ['eta0', 'n_iter_no_change', 'max_iter', 'alpha', 'val_a
 
 
 
-def create_exp_df(experiment, to_float_list = to_transform_to_float, from_str_dict={'max_features':{'auto':35,
+def create_exp_df(experiment, to_float_list = to_transform_to_float, calc_rates=True, from_str_dict={'max_features':{'auto':35,
                                                                                                     'sqrt':6}}):
     """
     This function, given the experiment name, retrieves experiment data from mlflow and include them in a pandas dataframe
@@ -541,10 +542,11 @@ def create_exp_df(experiment, to_float_list = to_transform_to_float, from_str_di
             except:
                 pass
 
-    viz.loc['tp_rate'] = viz.loc['test_tp']/(viz.loc['test_tp'] + viz.loc['test_fn'])
-    viz.loc['tn_rate'] = viz.loc['test_tn']/(viz.loc['test_tn'] + viz.loc['test_fp'])
-    viz.loc['fp_rate'] = viz.loc['test_fp']/(viz.loc['test_tp'] + viz.loc['test_tn'])
-    viz.loc['fn_rate'] = viz.loc['test_fn']/(viz.loc['test_tn'] + viz.loc['test_tp'])
+    if calc_rates:
+        viz.loc['tp_rate'] = viz.loc['test_tp']/(viz.loc['test_tp'] + viz.loc['test_fn'])
+        viz.loc['tn_rate'] = viz.loc['test_tn']/(viz.loc['test_tn'] + viz.loc['test_fp'])
+        viz.loc['fp_rate'] = viz.loc['test_fp']/(viz.loc['test_tp'] + viz.loc['test_tn'])
+        viz.loc['fn_rate'] = viz.loc['test_fn']/(viz.loc['test_tn'] + viz.loc['test_tp'])
 
     return viz
 
