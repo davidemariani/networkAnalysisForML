@@ -322,13 +322,14 @@ def stacked_distplot(*args, title = '', yaxisname = '', xaxisname = '', density 
     return f
 
 
-def timeSeries(df, colors, title, plot_w=1800, plot_h =450, showY=True, rightY=False, Ylabel='', Xlabel='',
+def timeSeries(df, colors, title, x_ticks_type = 'str', plot_w=1800, plot_h =450, showY=True, rightY=False, Ylabel='', Xlabel='',
               custom_Y_left = None, custom_Y_right = None, Ylabel_2='', output_file_name='',
-              showXGrid = True, showYGrid=True, legend_names = [],custom_Y_interval_right = 2,
+              showXGrid = True, showYGrid=True, legend_names = [], custom_Y_interval_right = 2,
               custom_Y_precision_right = 0,  custom_Y_scientific_right = False, custom_Y_interval_left = 500,
               custom_Y_precision_left = 0,  custom_Y_scientific_left = False,
               legend_font_size = '10pt', axis_label_font_size = '10pt', x_axis_ticks_font_size='8pt',
-              y_axis_ticks_font_size = '8pt', boxtextplot = '8pt'): 
+              y_axis_ticks_font_size = '8pt', boxtextplot = '8pt',
+              x_interval_ticker = None): 
     """
     df: input dataframe from which taking the data. 
     colors: a list of colors
@@ -347,12 +348,23 @@ def timeSeries(df, colors, title, plot_w=1800, plot_h =450, showY=True, rightY=F
     labels = list(df.columns)
     rows = list(df.index)
     
-    range_min = min(df.iloc[0])
-    range_max = max(df.iloc[0]) #+ max(df.iloc[0])/10
+    range_min = min([min(df.iloc[i]) for i in range(len(df))])
+    range_max = max([max(df.iloc[i]) for i in range(len(df))]) #max(df.iloc[0]) #+ max(df.iloc[0])/10
     
     #main figure settings
-    ts = figure(plot_width =plot_w, plot_height =plot_h, x_range = labels, 
+
+    if x_ticks_type=='str':
+        x_range = labels
+
+    elif x_ticks_type=='int' or x_ticks_type=='float':
+        x_range = (min(labels), max(labels))
+
+    ts = figure(plot_width =plot_w, plot_height =plot_h, x_range = x_range, 
                 y_range=(range_min, range_max), title = title,)
+
+    if x_interval_ticker!=None:
+        ts.xaxis.ticker = x_interval_ticker
+
     ts.xaxis.major_label_orientation = np.pi/4
     ts.xaxis.major_label_text_font_size = x_axis_ticks_font_size
     
@@ -405,6 +417,7 @@ def timeSeries(df, colors, title, plot_w=1800, plot_h =450, showY=True, rightY=F
         
     ts.xaxis.axis_label = Xlabel #x axis label
     #ts.ygrid.ticker = SingleIntervalTicker(interval = 1.1/11.3)
+
     if not showXGrid:
         ts.xgrid.grid_line_color = None
     
