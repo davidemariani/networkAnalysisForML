@@ -296,3 +296,31 @@ def performance_grid(viz,
 
 
     return l
+
+
+
+def ann_perf_grid(viz_val, viz,
+                  legend_font_size='9pt', 
+                     fpr_font_size='9pt', 
+                     bestFprOnly=True, 
+                     rocs_p_width=600, 
+                     rocs_p_height=600,
+                     rocs_line_width=2, 
+                     rocs_model_appendix = None):
+
+    roc_val_data = [{'fpr':[float(v) for v in viz.loc['roc_val_fpr',model].split(',')[:-1]],
+                    'tpr':[float(v) for v in viz.loc['roc_val_tpr',model].split(',')[:-1]],
+                     'auc':viz.loc['val_auc',model]} for model in sorted(list(viz.columns))]
+
+    roc_test_data = [{'fpr':[float(v) for v in viz.loc['roc_test_fpr',model].split(',')[:-1]],
+                'tpr':[float(v) for v in viz.loc['roc_test_tpr',model].split(',')[:-1]],
+                    'auc':viz.loc['test_auc',model]} for model in sorted(list(viz.columns))]
+
+    test_roc = plot_rocs(roc_test_data, title_lab = 'Test performance', model_appendix = rocs_model_appendix,
+               p_width=rocs_p_width, p_height=rocs_p_height, line_width=rocs_line_width,
+                    colors = colors, legend_font_size=legend_font_size, fpr_font_size=fpr_font_size,
+                   bestFprOnly=bestFprOnly, show_legend=True)
+
+    return test_roc
+
+    

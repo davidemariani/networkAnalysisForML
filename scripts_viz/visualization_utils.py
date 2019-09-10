@@ -324,12 +324,13 @@ def stacked_distplot(*args, title = '', yaxisname = '', xaxisname = '', density 
 
 def timeSeries(df, colors, title, x_ticks_type = 'str', plot_w=1800, plot_h =450, showY=True, rightY=False, Ylabel='', Xlabel='',
               custom_Y_left = None, custom_Y_right = None, Ylabel_2='', output_file_name='',
+              line_widths = [2.5], line_alphas = [0.6],
               showXGrid = True, showYGrid=True, legend_names = [], custom_Y_interval_right = 2,
               custom_Y_precision_right = 0,  custom_Y_scientific_right = False, custom_Y_interval_left = 500,
               custom_Y_precision_left = 0,  custom_Y_scientific_left = False,
               legend_font_size = '10pt', axis_label_font_size = '10pt', x_axis_ticks_font_size='8pt',
               y_axis_ticks_font_size = '8pt', boxtextplot = '8pt',
-              x_interval_ticker = None): 
+              x_interval_ticker = None, legend_location = "top_left"): 
     """
     df: input dataframe from which taking the data. 
     colors: a list of colors
@@ -408,7 +409,14 @@ def timeSeries(df, colors, title, x_ticks_type = 'str', plot_w=1800, plot_h =450
             legendname = rows[n]
         else:
             legendname = legend_names[n]
-        ts.line(x = labels, y=df.loc[rows[n]], line_width=3.5, alpha=0.6, 
+
+        if len(line_widths)==1:
+            line_widths = line_widths*len(rows)
+
+        if len(line_alphas)==1:
+            line_alphas = line_alphas*len(rows)
+
+        ts.line(x = labels, y=df.loc[rows[n]], line_width=line_widths[n], alpha=line_alphas[n], 
                 legend=legendname, color=colors[count])
         count+=1
     
@@ -425,7 +433,7 @@ def timeSeries(df, colors, title, x_ticks_type = 'str', plot_w=1800, plot_h =450
         ts.ygrid.grid_line_color = None
     
     #legend settings
-    ts.legend.location = "top_left"
+    ts.legend.location = legend_location
     ts.legend.click_policy="hide"
     ts.legend.label_text_font_size= legend_font_size
     
@@ -669,7 +677,7 @@ def spiderWebChart(legend_names, names, vals, colors, title = '',
 
 
 def modelSpreadsheet(viz_dict, metric_list, model_type, color_cells=False, colors=[], index_header='', width=900, height=100, index_width=150,
-                     row_height=25):
+                     row_height=25, col_w_dict=None):
     """
     This function place a spreadsheet containing model information for performance visualization in a bokeh plot
     """
@@ -695,10 +703,16 @@ def modelSpreadsheet(viz_dict, metric_list, model_type, color_cells=False, color
                 """
         formatter =  HTMLTemplateFormatter(template=template)
         modelcol = [TableColumn(field='model', title='model', formatter=formatter)]
-        columns = modelcol + [TableColumn(field=i, title=i) for i in source.data.keys() if i not in ('colors', 'model')]
+        if col_w_dict==None:
+            columns = modelcol + [TableColumn(field=i, title=i) for i in source.data.keys() if i not in ('colors', 'model')]
+        else:
+            columns = modelcol + [TableColumn(field=i, title=i, width=col_w_dict[i]) for i in source.data.keys() if i not in ('colors', 'model')]
 
     else:
-        columns = [TableColumn(field=i, title=i, formatter=formatter) for i in source.data.keys() if i!='colors']
+        if col_w_dict==None:
+            columns = [TableColumn(field=i, title=i, formatter=formatter) for i in source.data.keys() if i!='colors']
+        else:
+            columns = [TableColumn(field=i, title=i, formatter=formatter, width=col_w_dict[i]) for i in source.data.keys() if i!='colors']
 
     data_table = DataTable(source=source, columns=columns, width=width, height=height, index_header=index_header, index_width=index_width,
                            row_height=row_height)
